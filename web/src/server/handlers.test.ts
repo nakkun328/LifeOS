@@ -231,3 +231,27 @@ describe('authenticate', () => {
     expect(await authenticate('Bearer ', deps)).toBe(false);
   });
 });
+
+describe('authenticate：iPhone 専用トークン', () => {
+  const IPHONE = 'iphone-token-1234567890';
+  const deps = { apiToken: 'secret-token', iphoneToken: IPHONE };
+
+  it('iPhone 用の入力 API（scope iphone）では、iPhone 専用トークンも通る', async () => {
+    expect(await authenticate(`Bearer ${IPHONE}`, deps, 'iphone')).toBe(true);
+    expect(await authenticate('Bearer secret-token', deps, 'iphone')).toBe(true); // 通常のトークンも通る
+  });
+  it('それ以外の API（scope full）では、iPhone 専用トークンは通らない', async () => {
+    expect(await authenticate(`Bearer ${IPHONE}`, deps)).toBe(false);
+    expect(await authenticate(`Bearer ${IPHONE}`, deps, 'full')).toBe(false);
+    expect(await authenticate('Bearer secret-token', deps)).toBe(true);
+  });
+  it('短すぎる iPhone 用トークンは無効（弱いトークンを許さない）', async () => {
+    expect(await authenticate('Bearer short', { iphoneToken: 'short' }, 'iphone')).toBe(false);
+    expect(await authenticate('Bearer 1234567890123456789', { iphoneToken: '1234567890123456789' }, 'iphone')).toBe(false);
+    expect(await authenticate('Bearer 12345678901234567890', { iphoneToken: '12345678901234567890' }, 'iphone')).toBe(true);
+  });
+  it('未設定・誤ったトークンは通らない', async () => {
+    expect(await authenticate(`Bearer ${IPHONE}`, { apiToken: 'secret-token' }, 'iphone')).toBe(false);
+    expect(await authenticate('Bearer wrong-token-xxxxxxxxxxxx', deps, 'iphone')).toBe(false);
+  });
+});

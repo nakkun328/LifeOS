@@ -13,24 +13,44 @@ iPhone の「ショートカット」アプリから、Life OS の Web API に�
 
 ---
 
-## 0. 準備
+## 0. 準備：iPhone 専用のトークンを作る
 
-次の2つを手元にメモしておきます（`SETUP.md` で作ったもの）。
+ショートカットには、Mac の拡張とは**別の、iPhone 専用のトークン**を使います。
 
-| 名前 | 例 | 使う場所 |
-|---|---|---|
-| API の URL | `https://xxxx.vercel.app` | 送り先のアドレス |
-| トークン | `LIFEOS_API_TOKEN` の値 | ヘッダーの `Authorization` |
+- このトークンで呼べるのは、**睡眠とアプリ利用の送信（`/api/ingest/sleep`、`/api/ingest/app`）だけ**です。Today の閲覧や勉強の記録などには使えません。
+- 漏れても、これだけ作り直せば済みます（Mac の拡張には影響しません）。
+- Mac がなくても、iPhone だけで作れます。
 
+### 0-1. トークンを作る（iPhone）
+1. iPhone の **パスワード** アプリを開き、右上の **＋**（新しいパスワード）を押します。
+2. **ウェブサイト**に `lifeos-iphone`、**ユーザ名**に `token` と入れます。
+3. **パスワード**の欄で、**強力なパスワードを使用** を選びます（`xxxxxx-xxxxxx-xxxxxx` のような20文字の文字列が入ります）。
+4. **保存** を押します。
+
+> パスワードアプリが使えないときは、英数字をでたらめに**20文字以上**、自分で入力して作っても構いません（例：`k7Qm-2xVd-9PzL-r4Ts-8Wn`）。短いと受け付けません。
+
+### 0-2. Vercel に登録する（iPhone のブラウザ）
+1. iPhone で Vercel（https://vercel.com）を開き、ログインします。画面が小さいときは、ブラウザの **ページのオプション（ぁあ）→ デスクトップ用 Web サイトを表示** にします。
+2. `life-os-ufdi` のプロジェクト → **Settings** → **Environment Variables** → **Add Environment Variable** を開きます。
+3. **Key**：`LIFEOS_IPHONE_TOKEN`、**Value**：0-1 のトークン（パスワードアプリで**コピー**して貼り付け）。
+4. **Save** を押します。
+5. **Deployments** を開き、**`Production` と付いた行**の **⋯ → Redeploy** を押して、**Ready** になるまで待ちます（Preview の行を再デプロイしても反映されません）。
+
+### 0-3. つながるか確認する（任意）
+ショートカットを作る前に、ブラウザでは確認できません（POST のため）。ステップ 2 のテスト用ショートカットが、そのまま確認になります。
+
+### 認証ヘッダー
 どのショートカットでも、リクエストは次の形です。
 
 ```
 POST  {API の URL}/api/ingest/...
 ヘッダー:
-  Authorization: Bearer {トークン}
+  Authorization: Bearer {iPhone 専用のトークン}
   Content-Type: application/json
 本文: JSON
 ```
+
+ヘッダーの値は、`Bearer `（最後に半角スペース）と入力してから、パスワードアプリのトークンを貼り付けます。
 
 > トークンはショートカットの中に書くことになります。iCloud で他人と共有するショートカットには、入れないでください。
 
