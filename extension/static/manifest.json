@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Night Guard",
+  "version": "0.1.0",
+  "description": "夜の YouTube・X・Instagram を、段階的にやさしく制限します。",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "alarms", "notifications", "webNavigation"],
+  "host_permissions": [
+    "https://*.youtube.com/*",
+    "https://*.x.com/*",
+    "https://*.twitter.com/*",
+    "https://*.instagram.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Night Guard", "default_popup": "popup.html" },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+}

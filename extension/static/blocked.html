@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Night Guard</title>
+  <link rel="stylesheet" href="common.css" />
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    main { max-width: 520px; width: 100%; text-align: center; }
+    .moon { font-size: 44px; }
+    h1 { font-size: 20px; font-weight: 500; color: var(--muted); margin: 8px 0 24px; }
+    .lead { font-size: 15px; color: var(--muted); margin: 0; }
+    .sleep { font-size: 48px; font-weight: 600; color: var(--accent); margin: 4px 0 0; letter-spacing: 0.02em; }
+    .sleep small { font-size: 20px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+    .note { margin: 20px 0 32px; color: var(--muted); font-size: 14px; }
+    .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    details { margin-top: 36px; text-align: left; background: var(--panel); border-radius: 12px; padding: 14px 18px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+    .unlock { margin-top: 14px; display: grid; gap: 10px; }
+    .unlock label { font-size: 13px; color: var(--muted); }
+    .wait { font-size: 14px; color: var(--accent); min-height: 1.6em; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="moon">🌙</div>
+    <h1 id="siteLabel">今夜はここまでにしませんか</h1>
+    <p class="lead">いま眠れば</p>
+    <p class="sleep" id="sleep">--<small></small></p>
+    <p class="note" id="note">眠れます。明日の朝を、少し楽に迎えましょう。</p>
+    <div class="actions">
+      <button class="primary" id="close">このタブを閉じる</button>
+    </div>
+    <details>
+      <summary>どうしても少しだけ開きたいとき</summary>
+      <div class="unlock">
+        <label for="reason">理由を一言（記録に残ります）</label>
+        <input id="reason" type="text" maxlength="100" placeholder="例：調べものがある" autocomplete="off" />
+        <div class="wait" id="wait"></div>
+        <div class="actions">
+          <button id="unlock" disabled>少しだけ開く</button>
+          <button id="cancel" hidden>やめておく</button>
+        </div>
+      </div>
+    </details>
+  </main>
+  <script src="blocked.js"></script>
+</body>
+</html>
