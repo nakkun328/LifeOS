@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>Night Guard</title>
+  <link rel="stylesheet" href="common.css" />
+  <style>
+    body { width: 280px; padding: 16px; }
+    h1 { font-size: 15px; margin: 0 0 12px; color: var(--muted); font-weight: 500; }
+    .stage { font-size: 18px; font-weight: 600; color: var(--accent); }
+    dl { margin: 14px 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; }
+    dt { color: var(--muted); }
+    dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    button { width: 100%; font-size: 13px; }
+    #devTime { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>🌙 Night Guard</h1>
+  <div class="stage" id="stage">--</div>
+  <dl>
+    <dt id="nextLabel">次の段階</dt><dd id="next">--</dd>
+    <dt>今夜の解除回数</dt><dd id="unlocks">--</dd>
+  </dl>
+  <div id="devTime"></div>
+  <button id="options">設定を開く</button>
+  <script src="popup.js"></script>
+</body>
+</html>
