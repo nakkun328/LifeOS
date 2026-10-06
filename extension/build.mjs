@@ -65,6 +65,7 @@ for (const s of [16, 48, 128]) writeFileSync(`${out}/icons/icon${s}.png`, png(s)
 await build({
   entryPoints: {
     background: 'src/background.ts',
+    pip: 'src/pip.ts',
     blocked: 'src/blocked.ts',
     popup: 'src/popup.ts',
     options: 'src/options.ts',

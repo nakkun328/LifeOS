@@ -3,6 +3,8 @@ import { classify, shouldBlock } from './core/match';
 import { nightKey } from './core/night';
 import { formatSleep, remainingSleepMs } from './core/sleep';
 import { getNextTransition, getStage } from './core/stage';
+import { PIP_CHANGED_MESSAGE } from './pipState';
+import { TAB_PATTERNS } from './sites';
 import { recordBlocked } from './storage/eventLog';
 import { flushOutbox } from './storage/remote';
 import { IDLE_SECONDS, syncTracking } from './tracker';
@@ -24,12 +26,6 @@ const SITE_FILTER: chrome.events.UrlFilter[] = [
   { hostSuffix: '.twitter.com' },
   { hostEquals: 'instagram.com' },
   { hostSuffix: '.instagram.com' },
-];
-const TAB_PATTERNS = [
-  'https://*.youtube.com/*',
-  'https://*.x.com/*',
-  'https://*.twitter.com/*',
-  'https://*.instagram.com/*',
 ];
 
 /** 1つのタブを現在時刻で判定し、制限対象ならブロック画面に差し替える */
@@ -123,6 +119,10 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
 // 利用時間の計測：前面の状態が変わったら、直前までの分を数え直す
 const sync = () => void syncTracking().catch(() => undefined);
 chrome.idle.setDetectionInterval(IDLE_SECONDS);
+// PiP の開始・終了（ページのスクリプトからの通知）
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === PIP_CHANGED_MESSAGE) sync();
+});
 chrome.idle.onStateChanged.addListener(sync);
 chrome.tabs.onActivated.addListener(sync);
 chrome.windows.onFocusChanged.addListener(sync);
