@@ -66,13 +66,15 @@ export function Today() {
       <Nav current="/" />
       <h1>🌙 Today</h1>
       <div className="err">{error}</div>
-      <NightBanner view={view} />
-      <StudyCard view={view} act={act} />
-      <SleepCard view={view} act={act} />
-      <TasksCard tasks={view.tasks} act={act} />
-      <LogsCard logs={view.logsToday} act={act} />
-      <DigitalCard view={view} />
-      <p className="muted" style={{ textAlign: 'center' }}>
+      <div className="cards">
+        <NightBanner view={view} />
+        <StudyCard view={view} act={act} />
+        <SleepCard view={view} act={act} />
+        <TasksCard tasks={view.tasks} act={act} />
+        <LogsCard logs={view.logsToday} act={act} />
+        <DigitalCard view={view} />
+      </div>
+      <p className="muted" style={{ textAlign: 'center', marginTop: 16 }}>
         <a href="#" onClick={async (e) => { e.preventDefault(); await supabase().auth.signOut(); window.location.href = '/login'; }}>ログアウト</a>
       </p>
     </main>
@@ -88,7 +90,7 @@ function NightBanner({ view }: { view: TodayView }) {
   const wake = parseHm(view.wakeTime) ?? 375;
   const ms = sleepRemainingMs(now, p.hh * 60 + p.mm, wake);
   return (
-    <section className="card night">
+    <section className="card night span-all">
       <h2>今寝れば</h2>
       <div className="big-num">{formatDuration(ms / 1000)}</div>
       <div className="muted">{view.wakeTime} に起きるとして、眠れます</div>

@@ -59,8 +59,9 @@ export function LogsPage() {
     <main>
       <Nav current="/logs" />
       <h1>一言ログ</h1>
-      <section className="card"><LogForm act={act} /><div className="err">{error}</div></section>
-      {logs === null ? <div className="muted">読み込み中…</div> : byDate.size === 0 ? <div className="muted">まだログがありません</div> : (
+      <div className="cards">
+      <section className="card span-all"><LogForm act={act} /><div className="err">{error}</div></section>
+      {logs === null ? <div className="muted span-all">読み込み中…</div> : byDate.size === 0 ? <div className="muted span-all">まだログがありません</div> : (
         [...byDate.entries()].map(([date, rows]) => (
           <section className="card" key={date}>
             <h2>{date}</h2>
@@ -68,6 +69,7 @@ export function LogsPage() {
           </section>
         ))
       )}
+      </div>
     </main>
   );
 }

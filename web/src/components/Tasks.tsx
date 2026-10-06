@@ -62,7 +62,8 @@ export function TasksPage() {
     <main>
       <Nav current="/tasks" />
       <h1>課題</h1>
-      <section className="card">
+      <div className="cards">
+      <section className="card span-all">
         <div className="row">
           <input className="grow" placeholder="課題名" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} />
           <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
@@ -83,6 +84,7 @@ export function TasksPage() {
           <ul className="plain">{done.map((t) => <TaskRow key={t.id} task={t} act={act} />)}</ul>
         </section>
       )}
+      </div>
     </main>
   );
 }
