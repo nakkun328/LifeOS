@@ -44,3 +44,20 @@ Night Guard（`extension/`）。
 
 ### 人がやる作業
 - Supabase の SQL Editor で `0002_tasks_logs.sql` を実行（`SETUP.md`）
+
+## Phase 4：Discord 連携
+### できたこと
+- `POST /api/discord`（Interactions Endpoint）：Ed25519 署名検証（改ざん・別の鍵・古いタイムスタンプ・ヘッダー欠落は 401）、PING 応答、持ち主以外は何も実行しない。
+- コマンド：`/panel`（ボタンのパネル）、`/log`、`/task`、`/today`、`/week`、`/sleep`
+- ボタン：勉強開始（科目をセレクトで選ぶ）、部活開始、終了、寝る、起きた、今日、今週
+- 期限のゆるい入力（`10/9`、`明日`、`3日後`、`2026-10-09`、全角）
+- コマンド登録スクリプト（`web/scripts/register-discord-commands.mjs`）と、`SETUP.md` の Discord 手順
+- 修正：Phase 2 の Today が参照する `app_events` テーブルを 0001 に追加（作り忘れ）。コードが使うテーブルがマイグレーションに揃っているか・RLS が有効かを検査するテストを追加。
+- テスト：Web 106件、拡張 68件。`next build` も通る。実サーバーで署名つき PING が 200、署名なし・改ざんが 401 になることを確認。
+
+### 未確認
+- **本物の Discord での動作**（Endpoint URL の保存、コマンド登録、ボタンの見た目・応答）。メッセージの形は Discord の仕様に沿って作ったが、実機では未確認。
+- Vercel 無料プランでの 3 秒以内の応答（コールドスタート時に遅れる可能性）。
+
+### 人がやる作業
+- `SETUP.md` の「Phase 4：Discord 連携」の手順 1〜7（アプリ作成、サーバーへの追加、環境変数、Endpoint URL の保存、コマンド登録）

@@ -54,8 +54,21 @@ create table guard_events (
 );
 create index guard_events_at on guard_events (at);
 
+-- iPhone のアプリを開いた・閉じたの記録（Phase 5 のショートカットが送る）。
+-- Today の集計が参照するので、テーブルは最初から用意しておく。同じ記録が重複して届いても1件
+create table app_events (
+  id uuid primary key default gen_random_uuid(),
+  app text not null,
+  event text not null check (event in ('open', 'close')),
+  at timestamptz not null,
+  created_at timestamptz not null default now(),
+  unique (app, event, at)
+);
+create index app_events_at on app_events (at);
+
 alter table subjects enable row level security;
 alter table sessions enable row level security;
 alter table sleep enable row level security;
 alter table usage enable row level security;
 alter table guard_events enable row level security;
+alter table app_events enable row level security;
