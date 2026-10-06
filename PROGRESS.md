@@ -21,11 +21,14 @@ Night Guard（`extension/`）。
 - Chromium に拡張を読み込み、モックAPIで以下を確認：前面タブの計測、別タブは数えない、音楽は別カテゴリ、サーバー停止中は保持して復帰後に再送、解除の記録（理由つき）、「寝る」ボタン（ブロック画面・ポップアップ）。Night Guard 本体の動作（段階切替・解除・設定ロック）も再確認。
 - `next build` が通ること、API の認証（無し / 誤り → 401）。
 
-### 未確認（実接続ができなかった箇所）
-- **Supabase への実接続**：`supabaseDb.ts`（supabase-js 経由のクエリ）は未確認。ロジックはメモリDBで、SQL は実PostgreSQLで確認済み。
-- **Supabase Auth のログイン**（ブラウザ → JWT → API の検証）。
-- **拡張の「連携を保存」時の Chrome の許可ダイアログ**（`chrome.permissions.request`）。テストでは保存済みの状態から始めた。
+### 実環境での確認（SETUP.md の Phase 2 を一緒に進めて確認）
+- Supabase（Free）にマイグレーション 0001・0002 を実行。8テーブルとも RLS 有効。
+- 手元（`npm run dev`）と Vercel（Hobby）の両方で、ログイン → Today 表示 → 科目追加 → START/STOP → 寝る/起きた → 一言ログが動き、Supabase に保存されることを確認。
+- 拡張：設定画面の「連携を保存」（Chrome の許可ダイアログを含む）、「寝る」ボタンからの送信、前面タブの計測（`music.youtube.com` が `youtube_music` として別枠で `usage` に保存）を確認。
+
+### 未確認
 - 実際の Mac での長時間の計測精度（離席判定・スリープ復帰）。
+- 夜（23:30 以降）の通常利用で Today の「昨夜のDigital」に集計が出ること（確認した時間帯は制限中で、計測できる音楽だけで確認した）。
 
 ### 人がやる作業
 - `SETUP.md` の手順 1〜7（Supabase 作成、ユーザー作成、環境変数、Vercel デプロイ、拡張の URL・トークン設定）
@@ -102,10 +105,10 @@ Night Guard（`extension/`）。
 5. iPhone のショートカットとオートメーション作成 → `docs/iphone-shortcuts.md`
 
 ## 未確認の箇所（まとめ）
-- Supabase への実接続（`supabaseDb.ts`）と Supabase Auth のログイン。ロジックはメモリDB、SQL は実 PostgreSQL で確認済み。
 - 本物の Discord での動作。
 - iPhone の実機でのショートカット。
-- 拡張の「連携を保存」時の Chrome の許可ダイアログ。長時間の計測精度。
+- 拡張の長時間の計測精度、夜の通常利用での「昨夜のDigital」の集計。
+（Supabase への実接続・ログイン・Vercel・拡張の送信は、実環境で確認済み。）
 
 ## 気づいた点
 - 3つの入力元（拡張・Discord・iPhone）は同じハンドラ（`web/src/server/handlers/`）を通るので、ルールは1か所にある。
