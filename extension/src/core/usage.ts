@@ -76,3 +76,10 @@ export const countableGap = (sinceMs: number, nowMs: number): number => {
   const gap = nowMs - sinceMs;
   return gap > 0 && gap <= MAX_GAP_MS ? gap : 0;
 };
+
+/**
+ * 同じ時間を二重に数えないよう、数えるカテゴリは常に1つ。
+ * 前面のタブが計測対象ならそれを、そうでなければ PiP で再生中の動画を数える。
+ */
+export const pickCategory = (foreground: UsageCategory | null, pip: UsageCategory | null): UsageCategory | null =>
+  foreground ?? pip;

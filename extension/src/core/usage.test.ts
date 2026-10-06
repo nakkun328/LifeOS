@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { removeSent, upsertItem, type OutboxItem } from './outbox';
-import { addToBuckets, classifyUsage, countableGap, pruneBuckets, splitIntoMinutes } from './usage';
+import { addToBuckets, classifyUsage, countableGap, pickCategory, pruneBuckets, splitIntoMinutes } from './usage';
 
 describe('classifyUsage', () => {
   const allowed = ['PLok'];

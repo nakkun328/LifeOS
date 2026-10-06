@@ -1,6 +1,7 @@
 import { getClockOffsetMs } from './clock';
 import { classify, shouldBlock } from './core/match';
 import { formatSleep, remainingSleepMs, splitDuration } from './core/sleep';
+import { isAttending, stepWait } from './core/wait';
 import { getStage } from './core/stage';
 import type { Site } from './core/types';
 import { recordUnlocked } from './storage/eventLog';
@@ -77,9 +78,15 @@ async function init(): Promise<void> {
     unlockBtn.disabled = true;
     cancelBtn.hidden = false;
     const step = async (): Promise<void> => {
-      if (left > 0) {
+      // この画面を見ている間だけ進める。離れている間は一時停止し、戻ったら続きから数える
+      const next = stepWait(left, isAttending(document.visibilityState, document.hasFocus()));
+      if (next.state === 'paused') {
+        waitEl.textContent = `この画面に戻ると、続きから数えます（あと ${left} 秒）`;
+        return;
+      }
+      if (next.state === 'counting') {
         waitEl.textContent = `あと ${left} 秒。ひと呼吸おいて、本当に必要か考えてみましょう。`;
-        left -= 1;
+        left = next.left;
         return;
       }
       stopWaiting();

@@ -1,4 +1,4 @@
-import { authenticate, type AuthDeps } from './auth';
+import { authenticate, type AuthDeps, type Scope } from './auth';
 import { createAdminClient, createSupabaseDb } from './supabaseDb';
 import { loadConfig } from './config';
 import { HttpError } from './errors';
@@ -11,6 +11,7 @@ function authDeps(): AuthDeps {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return {
     apiToken: process.env.LIFEOS_API_TOKEN,
+    iphoneToken: process.env.LIFEOS_IPHONE_TOKEN,
     ownerEmail: process.env.LIFEOS_OWNER_EMAIL,
     verifyJwt:
       url && key
@@ -40,10 +41,10 @@ export async function readJson(req: Request): Promise<unknown> {
 }
 
 /** 認証 → ハンドラ実行 → JSON 応答。エラーは HttpError の status で返す */
-export function api(handler: Handler) {
+export function api(handler: Handler, opts: { scope?: Scope } = {}) {
   return async (req: Request, route?: { params?: Promise<Record<string, string>> }): Promise<Response> => {
     try {
-      if (!(await authenticate(req.headers.get('authorization'), authDeps()))) {
+      if (!(await authenticate(req.headers.get('authorization'), authDeps(), opts.scope ?? 'full'))) {
         return Response.json({ error: '認証が必要です' }, { status: 401 });
       }
       const params = (await route?.params) ?? {};

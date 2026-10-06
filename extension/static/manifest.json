@@ -12,6 +12,13 @@
     "https://*.instagram.com/*"
   ],
   "optional_host_permissions": ["https://*/*", "http://localhost/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://*.youtube.com/*", "https://*.x.com/*", "https://*.twitter.com/*", "https://*.instagram.com/*"],
+      "js": ["pip.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "Night Guard", "default_popup": "popup.html" },
   "options_ui": { "page": "options.html", "open_in_tab": true },

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { POST as sleepRoute } from '@/app/api/ingest/sleep/route';
 import { POST as appRoute } from '@/app/api/ingest/app/route';
+import { POST as ingestRoute } from '@/app/api/ingest/route';
+import { GET as todayRoute } from '@/app/api/today/route';
 import { HttpError } from './errors';
 import { ingestApp, ingestSleep } from './handlers/iphone';
 import { recordBed, recordWake } from './handlers/sleep';
@@ -138,5 +140,27 @@ describe('認証エラー（API ルート）', () => {
       expect((await call(route, 'Bearer wrong')).status).toBe(401);
       expect((await call(route, 'right-token')).status).toBe(401); // Bearer がない
     }
+  });
+});
+
+describe('iPhone 専用トークン（API ルート）', () => {
+  const TOKEN = 'iphone-only-token-1234567890';
+  const post = (route: (r: Request) => Promise<Response>, auth: string) =>
+    route(new Request('http://x/api', { method: 'POST', body: '{}', headers: { Authorization: auth } }));
+
+  it('睡眠・アプリ利用の入力 API には使える（認証を通る。DB 未設定なので 500）', async () => {
+    process.env.LIFEOS_API_TOKEN = 'right-token';
+    process.env.LIFEOS_IPHONE_TOKEN = TOKEN;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.SUPABASE_URL;
+    for (const route of [sleepRoute, appRoute]) {
+      expect((await post(route, `Bearer ${TOKEN}`)).status).toBe(500); // 401 ではない = 認証は通った
+    }
+  });
+  it('ほかの API（Today の閲覧・拡張の送信）には使えない', async () => {
+    process.env.LIFEOS_IPHONE_TOKEN = TOKEN;
+    expect((await todayRoute(new Request('http://x/api/today', { headers: { Authorization: `Bearer ${TOKEN}` } }))).status).toBe(401);
+    expect((await post(ingestRoute, `Bearer ${TOKEN}`)).status).toBe(401);
   });
 });

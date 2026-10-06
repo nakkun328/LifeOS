@@ -88,7 +88,10 @@ Discord の **設定 → 詳細設定 → 開発者モード** をオンにし�
 サーバーの ID（`DISCORD_GUILD_ID`）も、サーバー名を右クリック → **サーバーIDをコピー** で取れます。
 
 ### 4. Web に環境変数を入れる
-Vercel の Environment Variables に **`DISCORD_PUBLIC_KEY`** と **`DISCORD_OWNER_ID`** を登録し、再デプロイする。
+Vercel の Environment Variables に **`DISCORD_PUBLIC_KEY`** と **`DISCORD_OWNER_ID`** を登録し、**Production のデプロイを再デプロイ**する。
+
+> 再デプロイするのは、Deployments の一覧で **`Production` のバッジが付いた行**です。`Preview`（ブランチ用）の行を再デプロイしても、公開中の Web には反映されません。
+> 反映されていないと、手順5の Endpoint URL の保存が「認証できませんでした」で失敗します。
 
 ### 5. Interactions Endpoint URL を設定する
 Developer Portal の **General Information → Interactions Endpoint URL** に
@@ -118,3 +121,12 @@ Discord で `/panel` と入力すると、ボタンのパネルが出ます。
 
 > Discord は 3 秒以内の応答を求めます。Vercel の無料プランでは、しばらく使っていないと初回だけ遅れて
 > 「アプリケーションが応答しませんでした」と出ることがあります。その場合はもう一度押してください。
+
+---
+
+## Phase 5：iPhone ショートカット連携
+
+手順は `docs/iphone-shortcuts.md` にあります。iPhone だけで進められます（Mac は不要です）。
+
+- iPhone 専用のトークン（`LIFEOS_IPHONE_TOKEN`、20文字以上）を作り、Vercel の環境変数に登録して、**Production** を再デプロイします。
+- このトークンで呼べるのは、睡眠とアプリ利用の送信だけです。漏れたら、Vercel の値を新しいものに変えて再デプロイし、ショートカットのヘッダーも更新します。
