@@ -1,8 +1,5 @@
+import { isHost } from './hosts';
 import type { Stage, Target, Unlocks } from './types';
-
-function isHost(host: string, domain: string): boolean {
-  return host === domain || host.endsWith('.' + domain);
-}
 
 /** URL でも ID でも受け取り、再生リストID を返す */
 export function normalizePlaylistId(input: string): string {

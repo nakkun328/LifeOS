@@ -23,6 +23,8 @@ export type Target = { site: Site; isShorts: boolean };
 export type EventKind = 'blocked' | 'unlocked';
 
 export type GuardEvent = {
+  /** 送信時の重複排除用。Phase 2 以降に記録したものにだけ付く */
+  id?: string;
   /** ISO 8601 */
   at: string;
   kind: EventKind;

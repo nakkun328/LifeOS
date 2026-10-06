@@ -14,6 +14,7 @@
     .row label { font-size: 14px; }
     .row small { display: block; color: var(--muted); }
     input[type="number"] { width: 90px; text-align: right; }
+    input[type="url"], input[type="password"] { text-align: left; }
     textarea { width: 100%; min-height: 110px; margin-top: 8px; }
     .banner { background: var(--panel); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 12px 0; font-size: 14px; }
     .error { color: #ffb4b4; white-space: pre-line; font-size: 13px; min-height: 1.4em; }
@@ -48,6 +49,20 @@
       <span class="ok" id="ok"></span>
     </div>
     <div class="error" id="error"></div>
+
+    <h2>Life OS との連携</h2>
+    <p class="muted" style="font-size:13px;margin:0 0 8px">
+      利用時間と Night Guard の記録、「寝る」ボタンを Life OS Web に送ります。空欄のままでも、拡張は今までどおり動きます。
+      この欄は制限中でも変更できます。
+    </p>
+    <div class="row"><label for="apiUrl">API の URL</label><input id="apiUrl" data-always type="url" placeholder="https://your-app.vercel.app" style="width:260px" /></div>
+    <div class="row"><label for="apiToken">トークン</label><input id="apiToken" data-always type="password" autocomplete="off" style="width:260px" /></div>
+    <div class="save">
+      <button id="saveRemote">連携を保存</button>
+      <span class="ok" id="remoteOk"></span>
+    </div>
+    <div class="error" id="remoteError"></div>
+    <div class="muted" style="font-size:13px" id="remoteStatus"></div>
     <div id="debugRoot"></div>
   </main>
   <script src="options.js"></script>
