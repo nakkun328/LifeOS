@@ -29,3 +29,18 @@ Night Guard（`extension/`）。
 
 ### 人がやる作業
 - `SETUP.md` の手順 1〜7（Supabase 作成、ユーザー作成、環境変数、Vercel デプロイ、拡張の URL・トークン設定）
+
+## Phase 3：Tasks と 一言ログ
+### できたこと
+- `supabase/migrations/0002_tasks_logs.sql`：tasks / logs（実PostgreSQL 16 で制約を確認）
+- Tasks：課題名と期限で登録、進捗を1タップで変更（未着手 → 途中 → 完了）、期限の近い順、「あと3日」「今日が期限」。期限切れは責めない言い回し。`/tasks` ページ。
+- 一言ログ：1行 + タグ（趣味 / 部活 / 日記）。Today から直接入力、`/logs` で日付ごとに見返せる。
+- 部活の作業時間：Today の計測カードで 勉強 / 部活 を切り替え。集計は勉強と分けて表示。
+- Today に、期限が近い課題（残り日数つき）と今日のログを表示。
+- テスト：Web 67件（Phase 2 の分を含む）、拡張 68件。`next build` も通る。
+
+### 未確認
+- Supabase への実接続（Phase 2 から継続）。画面操作（ブラウザでの見た目・タップ）は未確認。
+
+### 人がやる作業
+- Supabase の SQL Editor で `0002_tasks_logs.sql` を実行（`SETUP.md`）

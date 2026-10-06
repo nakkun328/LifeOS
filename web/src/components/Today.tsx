@@ -4,6 +4,9 @@ import { ApiError, apiFetch, supabase } from '@/lib/client';
 import { formatClock, jstParts, parseHm } from '@/lib/jst';
 import { formatDuration, sleepRemainingMs } from '@/lib/messages';
 import type { TodayView } from '@/server/handlers/today';
+import { LogsCard } from './Logs';
+import { Nav } from './Nav';
+import { TasksCard } from './Tasks';
 
 const CATEGORY_LABEL: Record<string, string> = {
   youtube: 'YouTube',
@@ -60,11 +63,14 @@ export function Today() {
 
   return (
     <main>
+      <Nav current="/" />
       <h1>🌙 Today</h1>
       <div className="err">{error}</div>
       <NightBanner view={view} />
       <StudyCard view={view} act={act} />
       <SleepCard view={view} act={act} />
+      <TasksCard tasks={view.tasks} act={act} />
+      <LogsCard logs={view.logsToday} act={act} />
       <DigitalCard view={view} />
       <p className="muted" style={{ textAlign: 'center' }}>
         <a href="#" onClick={async (e) => { e.preventDefault(); await supabase().auth.signOut(); window.location.href = '/login'; }}>ログアウト</a>
@@ -97,6 +103,7 @@ function StudyCard({ view, act }: { view: TodayView; act: Act }) {
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [edit, setEdit] = useState(false);
   const [ack, setAck] = useState(false);
+  const [kind, setKind] = useState<'study' | 'club'>('study');
   const active = view.active;
   const chosen = subjectId || view.subjects[0]?.id || '';
 
@@ -121,17 +128,21 @@ function StudyCard({ view, act }: { view: TodayView; act: Act }) {
         </>
       ) : (
         <>
+          <div className="row" style={{ marginBottom: 8 }}>
+            <button className={kind === 'study' ? 'primary' : ''} onClick={() => setKind('study')}>勉強</button>
+            <button className={kind === 'club' ? 'primary' : ''} onClick={() => setKind('club')}>部活</button>
+          </div>
           <div className="row">
-            <select className="grow" value={chosen} onChange={(e) => setSubjectId(e.target.value)}>
-              {view.subjects.length === 0 && <option value="">科目を追加してください</option>}
-              {view.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <button className="primary big" disabled={!chosen} onClick={() => act(() => apiFetch('/api/sessions/start', { body: { kind: 'study', subject_id: chosen } }))}>
+            {kind === 'study' ? (
+              <select className="grow" value={chosen} onChange={(e) => setSubjectId(e.target.value)}>
+                {view.subjects.length === 0 && <option value="">科目を追加してください</option>}
+                {view.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            ) : <span className="grow muted">部活の時間を計ります</span>}
+            <button className="primary big" disabled={kind === 'study' && !chosen}
+              onClick={() => act(() => apiFetch('/api/sessions/start', { body: kind === 'study' ? { kind, subject_id: chosen } : { kind } }))}>
               START
             </button>
-          </div>
-          <div className="row" style={{ marginTop: 8 }}>
-            <button onClick={() => act(() => apiFetch('/api/sessions/start', { body: { kind: 'club' } }))}>部活を始める</button>
           </div>
         </>
       )}

@@ -10,10 +10,13 @@ import {
 } from '@/lib/aggregate';
 import { addDays, dayKey, dayStart, weekStartKey } from '@/lib/jst';
 import { bedDiffMessage, formatAvgBed } from '@/lib/messages';
-import type { AppEventRow, GuardEventRow, SessionRow, SleepRow, SubjectRow, UsageRow } from '@/lib/types';
+import { upcoming } from '@/lib/tasks';
+import type { AppEventRow, GuardEventRow, LogRow, SessionRow, SleepRow, SubjectRow, UsageRow } from '@/lib/types';
 import type { Ctx } from '../context';
+import { listTodayLogs } from './logs';
 import { getActiveSession, isLongRunning } from './sessions';
 import { listSubjects } from './subjects';
+import { listTasks, type TaskView } from './tasks';
 
 export type TodayView = {
   now: string;
@@ -29,6 +32,8 @@ export type TodayView = {
     diffMessage: string | null;
     weekdayAvgBed: string | null;
   };
+  tasks: TaskView[];
+  logsToday: LogRow[];
   digital: {
     nightDate: string;
     mac: DigitalTotals;
@@ -45,11 +50,13 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
   const todayStart = dayStart(todayKey, config.boundaryMin);
   const tomorrowStart = dayStart(addDays(todayKey, 1), config.boundaryMin);
 
-  const [subjects, active, sessions, sleepRows] = await Promise.all([
+  const [subjects, active, sessions, sleepRows, tasks, logsToday] = await Promise.all([
     listSubjects(ctx),
     getActiveSession(ctx),
     db.select<SessionRow>('sessions', { gte: { started_at: addDaysIso(weekStart, -1) } }),
     db.select<SleepRow>('sleep', { gte: { sleep_at: addDaysIso(now, -35) }, order: { col: 'sleep_at' } }),
+    listTasks(ctx),
+    listTodayLogs(ctx),
   ]);
   // 週の頭をまたいで始まったセッションも拾うため、1日ぶん広めに取って重なりで数える
   const running = active && !sessions.some((s) => s.id === active.id) ? [...sessions, active] : sessions;
@@ -93,6 +100,8 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
       diffMessage: bedDiffMessage(bed.diffMinutes),
       weekdayAvgBed: bed.weekdayAvgMinutes === null ? null : formatAvgBed(bed.weekdayAvgMinutes),
     },
+    tasks: upcoming(tasks, 3) as TaskView[],
+    logsToday,
     digital: {
       nightDate: nightKey,
       mac: usageIn(usageRows, 'mac', win.start, win.end),

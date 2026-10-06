@@ -17,6 +17,7 @@ Life OS で、人の手で行う作業（アカウント作成・環境変数・
 ### 2. テーブルを作る
 **SQL Editor** を開き、`supabase/migrations/` の SQL を**番号順に**貼って実行する（Phase が進むと増えます）。
 - `0001_init.sql`（Phase 2）
+- `0002_tasks_logs.sql`（Phase 3）
 
 > Supabase CLI を使う場合は `supabase link` のあと `supabase db push` でも同じです。
 

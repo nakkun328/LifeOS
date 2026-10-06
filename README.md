@@ -5,7 +5,7 @@
 | ディレクトリ | 内容 |
 |---|---|
 | `extension/` | Night Guard（Chrome拡張）。夜の YouTube・X・Instagram を制限し、利用時間を計測する。[README](extension/README.md) |
-| `web/` | Life OS Web（Next.js + Supabase）。Today・Study・就寝の記録。 |
+| `web/` | Life OS Web（Next.js + Supabase）。Today・Study・就寝・Tasks・一言ログ。 |
 | `supabase/migrations/` | DB のスキーマ（SQL） |
 | `docs/` | 各 Phase の計画書 |
 
