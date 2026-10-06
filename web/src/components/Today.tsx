@@ -213,9 +213,12 @@ function SleepCard({ view, act }: { view: TodayView; act: Act }) {
       </div>
       <div style={{ marginTop: 10 }}>
         {s.lastNight ? (
-          <div className="stat"><span>昨夜の就寝</span><span>{formatClock(new Date(s.lastNight.sleep_at))}</span></div>
+          <div className="stat"><span>昨夜の就寝</span><span>{formatClock(new Date(s.lastNight.sleep_at))}{s.lastNight.source === 'auto' ? '（Watch）' : ''}</span></div>
         ) : (
           <div className="muted">まだ記録がありません</div>
+        )}
+        {s.lastNight?.wake_at && (
+          <div className="stat"><span>睡眠時間</span><span>{formatDuration((Date.parse(s.lastNight.wake_at) - Date.parse(s.lastNight.sleep_at)) / 1000)}</span></div>
         )}
         {s.diffMessage && <div className="stat"><span>前日との差</span><span>{s.diffMessage}</span></div>}
         <div className="stat"><span>平日の平均就寝</span><span>{s.weekdayAvgBed ?? '--:--'}</span></div>

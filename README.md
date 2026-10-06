@@ -5,10 +5,10 @@
 | ディレクトリ | 内容 |
 |---|---|
 | `extension/` | Night Guard（Chrome拡張）。夜の YouTube・X・Instagram を制限し、利用時間を計測する。[README](extension/README.md) |
-| `web/` | Life OS Web（Next.js + Supabase）。Today・Study・就寝・Tasks・一言ログ。 |
+| `web/` | Life OS Web（Next.js + Supabase）。Today・Study・就寝・Tasks・一言ログ。Discord と iPhone からの入力も受ける。 |
 | `supabase/migrations/` | DB のスキーマ（SQL） |
 | `web/scripts/` | Discord コマンド登録スクリプト |
-| `docs/` | 各 Phase の計画書 |
+| `docs/` | 各 Phase の計画書、iPhone ショートカットの手順書（[iphone-shortcuts.md](docs/iphone-shortcuts.md)） |
 
 - 作業の進み具合：[PROGRESS.md](PROGRESS.md)
 - 決めたことの記録：[DECISIONS.md](DECISIONS.md)

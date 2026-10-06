@@ -61,3 +61,52 @@ Night Guard（`extension/`）。
 
 ### 人がやる作業
 - `SETUP.md` の「Phase 4：Discord 連携」の手順 1〜7（アプリ作成、サーバーへの追加、環境変数、Endpoint URL の保存、コマンド登録）
+
+## Phase 5：iPhone ショートカット連携
+### できたこと
+- `POST /api/ingest/sleep`：睡眠（Apple Watch 由来）。同じ夜は1件に保つ（再送は無変化、値が変わったら更新）。自動データがある夜は、ボタンの記録より優先して集計し、ボタンの行も残す。
+- `POST /api/ingest/app`：アプリを開いた・閉じた（単発も配列も可）。重複は無視。開く→閉じるを組にして、Today の Digital に **Mac とは分けて** 出す。23:30〜06:00 の窓の外にはみ出す部分は切り落とす（朝にまたぐ区間も窓の分は数える）。
+- Today に、睡眠時間と「（Watch）」の表示を追加。
+- `docs/iphone-shortcuts.md`：睡眠を送るショートカットと毎朝のオートメーション、アプリごとの開く／閉じるのショートカットとオートメーション、JSON・ヘッダー、curl での確認、困ったときの表。
+- テスト：Web 119件（正常系・重複・不正入力・認証エラー・自動優先・Digital の分離）、拡張 68件。
+- 画面の確認：Web の Today / Tasks / Logs をスマホ幅の実ブラウザで描画し、表示内容とボタン操作（START・寝る・ログ記録）を確認（認証と API はモック）。
+
+### 未確認
+- **iPhone の実機でのショートカット作成と動作**（手順書は仕様どおりに書いたが、画面名や選べる項目は iOS のバージョンで違う可能性がある）。特に「ヘルスケアサンプルを検索」の睡眠サンプルの扱い（覚醒の除外など）。
+- 実際の Apple Watch の睡眠データで、就寝・起床が意図どおりに取れるか。
+- アプリのオートメーションが、実際にどの程度確実に「開く・閉じる」を送るか（iOS 側の挙動に依存）。
+
+### 人がやる作業
+- `docs/iphone-shortcuts.md` に沿って、iPhone でショートカットとオートメーションを作る。
+
+---
+
+# 全体のまとめ（Phase 1〜5）
+
+| Phase | 内容 | 状態 |
+|---|---|---|
+| 1 | Night Guard（Chrome 拡張） | 完了・マージ済み |
+| 2 | Web MVP（Today・Study・就寝）、拡張の計測と送信 | 完了 |
+| 3 | Tasks・一言ログ・部活 | 完了 |
+| 4 | Discord 連携 | 完了（実機未確認） |
+| 5 | iPhone ショートカット連携 | 完了（実機未確認） |
+
+- **テスト**：拡張 68件、Web 119件（すべて通る）。Postgres 16 でマイグレーション 0001・0002 を実行して制約を確認。実ブラウザ（Chromium）で拡張の動作と Web 画面を確認。
+- **Phase 6 の機能（Journal・English Words・Motivation・Wishlist・Insights）は作っていない。** 記録が数週間たまってから、仕様を決めて別途。
+
+## 人がやる作業（まとめ）
+1. Supabase のプロジェクト作成、`0001`・`0002` の SQL 実行、ログインユーザー作成 → `SETUP.md` Phase 2
+2. 環境変数の設定、Vercel へのデプロイ → `SETUP.md` Phase 2
+3. 拡張に API の URL とトークンを設定（Chrome の許可ダイアログで許可）→ `SETUP.md` Phase 2
+4. Discord アプリの作成、Endpoint URL の保存、コマンド登録 → `SETUP.md` Phase 4
+5. iPhone のショートカットとオートメーション作成 → `docs/iphone-shortcuts.md`
+
+## 未確認の箇所（まとめ）
+- Supabase への実接続（`supabaseDb.ts`）と Supabase Auth のログイン。ロジックはメモリDB、SQL は実 PostgreSQL で確認済み。
+- 本物の Discord での動作。
+- iPhone の実機でのショートカット。
+- 拡張の「連携を保存」時の Chrome の許可ダイアログ。長時間の計測精度。
+
+## 気づいた点
+- 3つの入力元（拡張・Discord・iPhone）は同じハンドラ（`web/src/server/handlers/`）を通るので、ルールは1か所にある。
+- 起床時刻は拡張の設定（Night Guard のブロック画面用）と Web の `LIFEOS_WAKE_TIME` の2か所にある。揃えておくこと。

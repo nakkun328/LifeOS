@@ -69,7 +69,7 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
   const from = addDaysIso(win.start, -0.25);
   const [usageRows, appEvents, guardRows] = await Promise.all([
     db.select<UsageRow>('usage', { gte: { start: from }, lt: { start: win.end.toISOString() } }),
-    db.select<AppEventRow>('app_events', { gte: { at: from }, lt: { at: win.end.toISOString() } }),
+    db.select<AppEventRow>('app_events', { gte: { at: from }, lt: { at: addDaysIso(win.end, 0.25) } }),
     db.select<GuardEventRow>('guard_events', { gte: { at: dayStart(nightKey, config.boundaryMin).toISOString() } }),
   ]);
   const nightGuard = guardRows.filter((g) => dayKey(new Date(g.at), config.boundaryMin) === nightKey);
