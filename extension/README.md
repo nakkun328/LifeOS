@@ -21,6 +21,15 @@ Life OS Phase 1。夜になると YouTube・X・Instagram を段階的に制限�
 - 制限中（23:15〜06:00）は設定画面が表示のみになり、編集できません。
 - 制限・解除の出来事は `chrome.storage.local` に保存します（時刻・種別・サイト・解除理由）。同一タブ・同一サイトの制限は60秒以内なら1件にまとめます。
 
+### Life OS との連携（Phase 2）
+設定画面の「Life OS との連携」に API の URL とトークンを入れると、次のものが Life OS Web に送られます（手順は `SETUP.md`）。空欄のままでも、Night Guard は今までどおり動きます。
+- **利用時間**：YouTube（通常 / Shorts / 音楽）・X・Instagram。前面のウィンドウのアクティブなタブだけを数えます（別タブ・別ウィンドウ・画面ロック中は数えません。無操作が3分続いたときは、音が出ているタブだけ数えます）。音楽（music.youtube.com と許可した再生リスト）は別枠で、「減らしたい時間」に含まれません。
+- **Night Guard の記録**（制限した・解除した）
+- **「寝る」ボタン**（ブロック画面とポップアップ）
+
+送れなかった分は拡張の中に溜めて、あとで再送します。サーバー側で重複を無視するので、二重登録にはなりません。
+この欄は、制限中でも変更できます（夜に変えても制限の回避にならないため）。
+
 ### 時刻の扱い（壊れにくさ）
 制限するかどうかは **常に現在時刻から判定**します。アラームは「判定し直すきっかけ」でしかないので、遅れても発火しなくても結果は変わりません。
 段階の切り替え時刻・解除の期限切れ・1分ごとの保険アラームのほか、ブラウザ起動時にも開いているタブを判定し直します。
@@ -78,8 +87,9 @@ esbuild なら設定ほぼ不要で一瞬で終わります。テストは vites
 チャンネル単位の許可は、今回は入れていません（Phase 1 を軽く保つため。必要になったら後で追加します）。
 
 ## 権限
-- `storage` / `alarms` / `notifications` / `webNavigation`
+- `storage` / `alarms` / `notifications` / `webNavigation` / `idle`（離席・ロック中を数えないため）
 - `host_permissions`：`youtube.com` / `x.com` / `twitter.com` / `instagram.com`（https のみ）
+- `optional_host_permissions`：設定画面で連携を保存したとき、その URL だけを許可します（最初から全サイトの権限は持ちません）。
 - `tabs` 権限は不要です（ホスト権限の範囲でタブの URL を扱えます）。
 
 ## ファイル構成
@@ -95,13 +105,15 @@ extension/
       settings.ts         初期値・検証・編集ロック
       night.ts / dedupe.ts / time.ts / types.ts
     storage/
-      eventLog.ts         記録は必ずここを通る（Phase 2 で送信先を足す）
+      eventLog.ts         記録は必ずここを通る（`sinks` に送信先を足せる）
+      remote.ts           Life OS への送信と、送信待ちキュー
       settings.ts / unlock.ts
+    tracker.ts            利用時間の計測
     clock.ts              現在時刻の取得（開発ビルドのみ仮想時刻）
     background.ts         遷移の監視・アラーム・通知
     blocked.ts / popup.ts / options.ts / debugPanel.ts
 ```
 
-## Phase 2 に向けて
-記録は `src/storage/eventLog.ts` の `recordEvent()` に集約しています。Life OS Web の API へ送るときは、
-`EventSink` を実装して `sinks` 配列に足すだけで済みます（今回は未実装です）。
+## 記録の送信先
+記録は `src/storage/eventLog.ts` の `recordEvent()` に集約しています。送信先を増やすときは、
+`EventSink` を実装して `sinks` 配列に足します。

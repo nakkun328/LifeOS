@@ -4,6 +4,8 @@ import { nightKey } from './core/night';
 import { formatSleep, remainingSleepMs } from './core/sleep';
 import { getNextTransition, getStage } from './core/stage';
 import { recordBlocked } from './storage/eventLog';
+import { flushOutbox } from './storage/remote';
+import { IDLE_SECONDS, syncTracking } from './tracker';
 import { loadSettings } from './storage/settings';
 import { getUnlocks } from './storage/unlock';
 
@@ -97,6 +99,8 @@ async function scheduleAlarms(): Promise<void> {
 
 /** アラーム・起動・設定変更のどれから呼ばれても同じ結果になる */
 async function sweep(): Promise<void> {
+  await syncTracking().catch(() => undefined);
+  await flushOutbox().catch(() => undefined);
   await maybeNotify();
   await evaluateOpenTabs();
   await scheduleAlarms();
@@ -116,10 +120,23 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
   { url: SITE_FILTER },
 );
 
+// 利用時間の計測：前面の状態が変わったら、直前までの分を数え直す
+const sync = () => void syncTracking().catch(() => undefined);
+chrome.idle.setDetectionInterval(IDLE_SECONDS);
+chrome.idle.onStateChanged.addListener(sync);
+chrome.tabs.onActivated.addListener(sync);
+chrome.windows.onFocusChanged.addListener(sync);
+chrome.tabs.onUpdated.addListener((_id, info) => {
+  if (info.url || info.status === 'complete' || info.audible !== undefined) sync();
+});
+
 chrome.alarms.onAlarm.addListener(() => void sweep());
 chrome.runtime.onStartup.addListener(() => void sweep());
 chrome.runtime.onInstalled.addListener(() => void sweep());
 chrome.storage.onChanged.addListener((changes, area) => {
+  // 解除などの記録が積まれたら、ページが閉じる前に切り離してすぐ送る（利用時間は1分ごとの同期でまとめて送る）
+  const queued = changes.outbox?.newValue as Array<{ payload: { type?: string } }> | undefined;
+  if (area === 'local' && queued?.some((i) => i.payload.type !== 'usage')) void flushOutbox().catch(() => undefined);
   if (area === 'local' && (changes.settings || changes.unlocks || isClockChange(changes))) {
     void scheduleAlarms();
   }

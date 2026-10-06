@@ -2,6 +2,7 @@
 // Phase 2 では EventSink を1つ足す（Life OS Web の API へ送信）だけで済むようにしてある。
 import { checkBlockDedupe } from '../core/dedupe';
 import type { GuardEvent, Site } from '../core/types';
+import { enqueue, flushOutbox } from './remote';
 
 export interface EventSink {
   write(event: GuardEvent): Promise<void>;
@@ -25,8 +26,20 @@ const localSink: EventSink = {
   },
 };
 
-/** 書き込み先。Phase 2 でここに送信用のシンクを追加する */
-const sinks: EventSink[] = [localSink];
+/** Life OS Web への送信。送れなかった分は outbox に残り、あとで再送される */
+const remoteSink: EventSink = {
+  async write(event) {
+    if (!event.id) return;
+    await enqueue({
+      id: event.id,
+      payload: { type: 'guard', id: event.id, at: event.at, kind: event.kind, site: event.site, reason: event.reason ?? null },
+    });
+    void flushOutbox();
+  },
+};
+
+/** 書き込み先。ここに足せば記録の送信先を増やせる */
+const sinks: EventSink[] = [localSink, remoteSink];
 
 export async function recordEvent(event: GuardEvent): Promise<void> {
   await Promise.all(sinks.map((s) => s.write(event)));
@@ -43,9 +56,9 @@ export async function recordBlocked(site: Site, tabId: number, now: Date): Promi
   const last = (r.blockDedupe as Record<string, number> | undefined) ?? {};
   const { record, next } = checkBlockDedupe(last, `${tabId}:${site}`, now.getTime());
   await chrome.storage.session.set({ blockDedupe: next });
-  if (record) await recordEvent({ at: now.toISOString(), kind: 'blocked', site });
+  if (record) await recordEvent({ id: crypto.randomUUID(), at: now.toISOString(), kind: 'blocked', site });
 }
 
 export async function recordUnlocked(site: Site, reason: string, now: Date): Promise<void> {
-  await recordEvent({ at: now.toISOString(), kind: 'unlocked', site, reason });
+  await recordEvent({ id: crypto.randomUUID(), at: now.toISOString(), kind: 'unlocked', site, reason });
 }

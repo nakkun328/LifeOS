@@ -4,6 +4,7 @@ import { formatSleep, remainingSleepMs, splitDuration } from './core/sleep';
 import { getStage } from './core/stage';
 import type { Site } from './core/types';
 import { recordUnlocked } from './storage/eventLog';
+import { enqueueBed, isConfigured, loadRemote } from './storage/remote';
 import { loadSettings } from './storage/settings';
 import { getUnlocks, setUnlock } from './storage/unlock';
 
@@ -91,6 +92,17 @@ async function init(): Promise<void> {
     waitTimer = window.setInterval(() => void step(), 1000);
   });
   cancelBtn.addEventListener('click', stopWaiting);
+
+  $('bed').addEventListener('click', async () => {
+    const msg = $('bedMsg');
+    if (!isConfigured(await loadRemote())) {
+      msg.textContent = '設定画面で、Life OS の URL とトークンを設定すると記録できます。';
+      return;
+    }
+    await enqueueBed(nowDate());
+    msg.textContent = '就寝を記録しました。おやすみなさい 🌙';
+    ($('bed') as HTMLButtonElement).disabled = true;
+  });
 
   $('close').addEventListener('click', async () => {
     const tab = await chrome.tabs.getCurrent();

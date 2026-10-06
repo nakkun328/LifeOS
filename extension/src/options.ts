@@ -3,6 +3,7 @@ import { normalizePlaylistId } from './core/match';
 import { isEditLocked } from './core/settings';
 import { getStage } from './core/stage';
 import type { Settings } from './core/types';
+import { getRemoteStatus, loadRemote, outboxSize, saveRemote } from './storage/remote';
 import { loadSettings, saveSettings } from './storage/settings';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -31,7 +32,7 @@ async function refreshLock(): Promise<void> {
   const locked = isEditLocked(getStage(await loadSettings(), await getNow()));
   document
     .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>(
-      'main input:not(.dev), main textarea, #save',
+      'main input:not(.dev):not([data-always]), main textarea, #save',
     )
     .forEach((el) => {
       el.disabled = locked;
@@ -39,8 +40,34 @@ async function refreshLock(): Promise<void> {
   $('lockBanner').hidden = !locked;
 }
 
+async function showRemoteStatus(): Promise<void> {
+  const [status, size] = await Promise.all([getRemoteStatus(), outboxSize()]);
+  const parts = [`未送信 ${size} 件`];
+  if (status.lastSentAt) parts.push(`最後に送信：${new Date(status.lastSentAt).toLocaleString('ja-JP')}`);
+  if (status.lastError) parts.push(`直近のエラー：${status.lastError}`);
+  $('remoteStatus').textContent = parts.join(' ／ ');
+}
+
 async function init(): Promise<void> {
   fill(await loadSettings());
+  const remote = await loadRemote();
+  $<HTMLInputElement>('apiUrl').value = remote.apiUrl;
+  $<HTMLInputElement>('apiToken').value = remote.apiToken;
+  void showRemoteStatus();
+  setInterval(() => void showRemoteStatus(), 5000);
+  $('saveRemote').addEventListener('click', async () => {
+    $('remoteError').textContent = '';
+    $('remoteOk').textContent = '';
+    try {
+      await saveRemote({ apiUrl: $<HTMLInputElement>('apiUrl').value, apiToken: $<HTMLInputElement>('apiToken').value });
+      const saved = await loadRemote();
+      $<HTMLInputElement>('apiUrl').value = saved.apiUrl;
+      $('remoteOk').textContent = '保存しました';
+      void showRemoteStatus();
+    } catch (e) {
+      $('remoteError').textContent = e instanceof Error ? e.message : String(e);
+    }
+  });
   await refreshLock();
   setInterval(() => void refreshLock(), 3000);
 
