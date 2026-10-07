@@ -160,7 +160,7 @@ describe('ボタンとセレクト：勉強の開始・終了', () => {
 
 describe('コマンド定義', () => {
   it('ハンドラが処理するコマンドと一致している', () => {
-    expect(commands.map((c) => c.name).sort()).toEqual(['decision', 'log', 'panel', 'sleep', 'task', 'tasks', 'today', 'week', 'words']);
+    expect(commands.map((c) => c.name).sort()).toEqual(['decision', 'journal', 'log', 'panel', 'sleep', 'task', 'tasks', 'today', 'week', 'words']);
     for (const c of commands) expect(c.description.length).toBeLessThanOrEqual(100);
   });
   it('ランダムな id でも壊れない', async () => {

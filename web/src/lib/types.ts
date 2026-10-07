@@ -102,3 +102,14 @@ export type WordRow = {
   created_at: string;
 };
 export type WordTestRow = { id: string; name: string; due_date: string; created_at: string };
+
+export type JournalRow = {
+  id: string;
+  entry_date: string;
+  body: string;
+  /** 手で編集した日記は、自動で上書きしない */
+  edited: boolean;
+  generated_at: string | null;
+  updated_at: string;
+  created_at: string;
+};

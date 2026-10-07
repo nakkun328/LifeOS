@@ -34,6 +34,9 @@ export function LifePage() {
         <Card href="/life/decisions" title="決定事項（部活）">
           <div className="sub">{decisions && decisions[0] ? `最新：${decisions[0].title ? `${decisions[0].title} ／ ` : ''}${decisions[0].body}` : 'キーワードで探せます'}</div>
         </Card>
+        <Card href="/life/journal" title="日記">
+          <div className="sub">その日のデータから自動で。手で直せます</div>
+        </Card>
         <Card href="/life/wishlist" title="Wishlist">
           <div className="sub">{wishes ? `欲しい物 ${wishes.filter((w) => !w.purchased).length}件` : '欲しい物を1か所に'}</div>
         </Card>

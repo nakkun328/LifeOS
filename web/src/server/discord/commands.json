@@ -103,5 +103,10 @@
     "name": "words",
     "description": "今日の英単語の復習と、テストまでの日数を見る",
     "type": 1
+  },
+  {
+    "name": "journal",
+    "description": "今日の日記を表示",
+    "type": 1
   }
 ]

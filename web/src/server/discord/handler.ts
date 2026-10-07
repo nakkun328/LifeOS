@@ -12,9 +12,10 @@ import { listSubjects } from '../handlers/subjects';
 import { getAppSettings } from '../handlers/settings';
 import { createTask, listTasks } from '../handlers/tasks';
 import { buildToday } from '../handlers/today';
+import { getJournal } from '../handlers/journal';
 import { getWordsSummary } from '../handlers/words';
 import { buildWeek } from '../handlers/week';
-import { formatTasks, formatToday, formatWeek, formatWords } from './format';
+import { formatJournal, formatTasks, formatToday, formatWeek, formatWords } from './format';
 
 export type Interaction = {
   type: number;
@@ -96,6 +97,8 @@ async function handleCommand(ctx: Ctx, i: Interaction): Promise<InteractionRespo
     }
     case 'words':
       return reply(formatWords(await getWordsSummary(ctx)));
+    case 'journal':
+      return reply(formatJournal(await getJournal(ctx)));
     case 'tasks': {
       const open = (await listTasks(ctx)).filter((t) => t.status !== 'done').slice(0, 10);
       return reply(formatTasks(open));

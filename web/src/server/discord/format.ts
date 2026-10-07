@@ -85,3 +85,11 @@ export function formatWords(w: WordsSummary): string {
   if (w.counts.weak > 0) lines.push(`苦手な単語 ${w.counts.weak}語`);
   return lines.join('\n');
 }
+
+/** 今日の日記（/journal）。Discord の本文は 2000 文字までなので、余裕をもって切る */
+export function formatJournal(j: { date: string; body: string }): string {
+  const head = `**📝 日記 ${j.date}**`;
+  if (!j.body.trim()) return `${head}\nまだ記録がありません。勉強やログを残すと、日記ができます。`;
+  const body = j.body.length > 1800 ? `${j.body.slice(0, 1800)}…` : j.body;
+  return `${head}\n${body}`;
+}
