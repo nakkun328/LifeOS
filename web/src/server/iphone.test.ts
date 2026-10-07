@@ -110,22 +110,22 @@ describe('アプリの利用（iPhone）', () => {
     await ingestApp(c, ev('TikTok', 'open', '2026-10-07T00:30:00'));
     await ingestApp(c, ev('TikTok', 'close', '2026-10-07T00:45:00'));
     const t = await buildToday(c);
-    expect(t.digital.iphone.byCategory).toEqual({ instagram: 10, tiktok: 15 });
-    expect(t.digital.iphone.minutes).toBe(25);
-    expect(t.digital.mac.minutes).toBe(0);
+    expect(t.digital.night.iphone.byCategory).toEqual({ instagram: 10, tiktok: 15 });
+    expect(t.digital.night.iphone.minutes).toBe(25);
+    expect(t.digital.night.mac.minutes).toBe(0);
   });
 
   it('朝（窓の外）に閉じる区間も、重なる分だけ数える', async () => {
     const c = makeTestCtx('2026-10-07T08:00:00');
     await ingestApp(c, ev('x', 'open', '2026-10-07T05:50:00'));
     await ingestApp(c, ev('x', 'close', '2026-10-07T06:20:00')); // 窓は 06:00 まで → 10分
-    expect((await buildToday(c)).digital.iphone.byCategory).toEqual({ x: 10 });
+    expect((await buildToday(c)).digital.night.iphone.byCategory).toEqual({ x: 10 });
   });
 
   it('閉じた記録が届かない（対にならない）開くは数えない', async () => {
     const c = makeTestCtx('2026-10-07T08:00:00');
     await ingestApp(c, ev('x', 'open', '2026-10-07T00:00:00'));
-    expect((await buildToday(c)).digital.iphone.minutes).toBe(0);
+    expect((await buildToday(c)).digital.night.iphone.minutes).toBe(0);
   });
 });
 

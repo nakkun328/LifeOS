@@ -8,8 +8,8 @@ import type { Ctx } from '../context';
 import { asObject, badRequest, isUuid } from '../errors';
 import { recordBed } from './sleep';
 
-const SITES = new Set(['youtube', 'x', 'instagram']);
-const CATEGORIES = new Set(['youtube', 'youtube_shorts', 'youtube_music', 'x', 'instagram']);
+const SITES = new Set(['youtube', 'x', 'instagram', 'tiktok']);
+const CATEGORIES = new Set(['youtube', 'youtube_shorts', 'youtube_music', 'x', 'instagram', 'tiktok']);
 const MAX_ITEMS = 500;
 
 export type IngestResult = { accepted: number; rejected: number };

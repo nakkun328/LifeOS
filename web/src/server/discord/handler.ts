@@ -9,10 +9,11 @@ import { addLog } from '../handlers/logs';
 import { startSession, stopSession } from '../handlers/sessions';
 import { recordBed, recordWake } from '../handlers/sleep';
 import { listSubjects } from '../handlers/subjects';
-import { createTask } from '../handlers/tasks';
+import { getAppSettings } from '../handlers/settings';
+import { createTask, listTasks } from '../handlers/tasks';
 import { buildToday } from '../handlers/today';
 import { buildWeek } from '../handlers/week';
-import { formatToday, formatWeek } from './format';
+import { formatTasks, formatToday, formatWeek } from './format';
 
 export type Interaction = {
   type: number;
@@ -87,6 +88,14 @@ async function handleCommand(ctx: Ctx, i: Interaction): Promise<InteractionRespo
     case 'log': {
       const log = await addLog(ctx, { tag: optionValue(i, 'tag'), body: optionValue(i, 'text') });
       return reply(`💬 [${log.tag}] ${log.body}`);
+    }
+    case 'decision': {
+      const d = await addLog(ctx, { kind: 'decision', body: optionValue(i, 'text'), title: optionValue(i, 'title') });
+      return reply(`📌 決定事項を残しました${d.title ? `（${d.title}）` : ''}\n${d.body}`);
+    }
+    case 'tasks': {
+      const open = (await listTasks(ctx)).filter((t) => t.status !== 'done').slice(0, 10);
+      return reply(formatTasks(open));
     }
     case 'task': {
       const due = parseDue(optionValue(i, 'due'), dayKey(ctx.now, ctx.config.boundaryMin));
@@ -163,6 +172,7 @@ async function bed(ctx: Ctx): Promise<string> {
   const hhmm = `${String(at.hh).padStart(2, '0')}:${String(at.mm).padStart(2, '0')}`;
   if (!created) return `すでに ${hhmm} に就寝を記録しています。`;
   const p = jstParts(ctx.now);
-  const ms = sleepRemainingMs(ctx.now.getTime(), p.hh * 60 + p.mm, parseHm(ctx.config.wakeTime) ?? 375);
+  const wake = (await getAppSettings(ctx)).sleep.wakeTime; // 起床予定は Settings の値
+  const ms = sleepRemainingMs(ctx.now.getTime(), p.hh * 60 + p.mm, parseHm(wake) ?? 375);
   return `おやすみなさい 🌙 ${hhmm} に記録しました。今寝れば ${formatDuration(ms / 1000)} 眠れます。`;
 }

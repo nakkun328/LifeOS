@@ -101,7 +101,13 @@ export type DigitalTotals = {
   byCategory: Record<string, number>;
 };
 
-export function usageIn(rows: UsageRow[], device: UsageRow['device'], from: Date, to: Date): DigitalTotals {
+export function usageIn(
+  rows: UsageRow[],
+  device: UsageRow['device'],
+  from: Date,
+  to: Date,
+  reducible: (category: string) => boolean = isReducible,
+): DigitalTotals {
   const bySeconds: Record<string, number> = {};
   for (const r of rows) {
     if (r.device !== device) continue;
@@ -110,14 +116,14 @@ export function usageIn(rows: UsageRow[], device: UsageRow['device'], from: Date
     if (ms > 0) bySeconds[r.category] = (bySeconds[r.category] ?? 0) + ms / 1000;
   }
   const byCategory: Record<string, number> = {};
-  let reducible = 0;
+  let reducedSeconds = 0;
   for (const [c, s] of Object.entries(bySeconds)) {
-    if (!isReducible(c)) continue;
+    if (c === MUSIC_CATEGORY || !reducible(c)) continue; // 音楽は常に別枠
     byCategory[c] = Math.round(s / 60);
-    reducible += s;
+    reducedSeconds += s;
   }
   return {
-    minutes: Math.round(reducible / 60),
+    minutes: Math.round(reducedSeconds / 60),
     musicMinutes: Math.round((bySeconds[MUSIC_CATEGORY] ?? 0) / 60),
     byCategory,
   };

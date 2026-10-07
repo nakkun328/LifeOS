@@ -15,7 +15,10 @@ type Builder = {
   lt(col: string, v: unknown): Builder;
   order(col: string, o: { ascending: boolean }): Builder;
   limit(n: number): Builder;
+  range(from: number, to: number): Builder;
 };
+
+const PAGE = 1000;
 
 function applyMatch<B extends Builder>(b: B, match: Record<string, Scalar>): B {
   let q: Builder = b;
@@ -26,15 +29,34 @@ function applyMatch<B extends Builder>(b: B, match: Record<string, Scalar>): B {
 export function createSupabaseDb(client: SupabaseClient): Db {
   return {
     async select<T = Row>(table: string, q: Query = {}): Promise<T[]> {
-      let b = client.from(table).select('*') as unknown as Builder;
-      b = applyMatch(b, q.eq ?? {});
-      for (const [k, v] of Object.entries(q.gte ?? {})) b = b.gte(k, v);
-      for (const [k, v] of Object.entries(q.lt ?? {})) b = b.lt(k, v);
-      if (q.order) b = b.order(q.order.col, { ascending: q.order.asc ?? true });
-      if (q.limit !== undefined) b = b.limit(q.limit);
-      const { data, error } = (await (b as unknown as Promise<{ data: T[] | null; error: { message: string } | null }>));
-      check(error);
-      return data ?? [];
+      // 1回の取得は最大 1000 行。limit がないときは、全部そろうまでページを分けて取る
+      const build = (from?: number): Builder => {
+        let b = client.from(table).select('*') as unknown as Builder;
+        b = applyMatch(b, q.eq ?? {});
+        for (const [k, v] of Object.entries(q.gte ?? {})) b = b.gte(k, v);
+        for (const [k, v] of Object.entries(q.lt ?? {})) b = b.lt(k, v);
+        if (q.order) b = b.order(q.order.col, { ascending: q.order.asc ?? true });
+        if (from !== undefined) {
+          if (!q.order) b = b.order('id', { ascending: true }); // ページをまたいでも順番がぶれないように
+          b = b.range(from, from + PAGE - 1);
+        }
+        if (q.limit !== undefined) b = b.limit(q.limit);
+        return b;
+      };
+      type Result = { data: T[] | null; error: { message: string } | null };
+      if (q.limit !== undefined) {
+        const { data, error } = await (build() as unknown as Promise<Result>);
+        check(error);
+        return data ?? [];
+      }
+      const all: T[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await (build(from) as unknown as Promise<Result>);
+        check(error);
+        const rows = data ?? [];
+        all.push(...rows);
+        if (rows.length < PAGE) return all;
+      }
     },
     async insert<T = Row>(table: string, row: Row): Promise<T> {
       const { data, error } = await client.from(table).insert(row).select().single();

@@ -8,9 +8,11 @@ import {
   usageIn,
 } from '@/lib/aggregate';
 import { addDays, dayKey, dayStart, formatClock, weekStartKey } from '@/lib/jst';
+import { makeReducible } from '@/lib/digital';
 import { formatAvgBed } from '@/lib/messages';
 import type { AppEventRow, SessionRow, SleepRow, UsageRow } from '@/lib/types';
 import type { Ctx } from '../context';
+import { getAppSettings } from './settings';
 
 export type WeekView = {
   weekStart: string;
@@ -26,6 +28,7 @@ export type WeekView = {
 /** 今週（月曜 06:00 から今日まで）のまとめ */
 export async function buildWeek(ctx: Ctx): Promise<WeekView> {
   const { db, now, config } = ctx;
+  const reducible = makeReducible((await getAppSettings(ctx)).digital);
   const todayKey = dayKey(now, config.boundaryMin);
   const weekStartK = weekStartKey(todayKey);
   const weekStart = dayStart(weekStartK, config.boundaryMin);
@@ -60,8 +63,8 @@ export async function buildWeek(ctx: Ctx): Promise<WeekView> {
     const w = nightWindow(k, config.afterMin, config.boundaryMin);
     digital.push({
       night_date: k,
-      macMinutes: usageIn(usageRows, 'mac', w.start, w.end).minutes,
-      iphoneMinutes: usageIn(iphoneUsage, 'iphone', w.start, w.end).minutes,
+      macMinutes: usageIn(usageRows, 'mac', w.start, w.end, reducible).minutes,
+      iphoneMinutes: usageIn(iphoneUsage, 'iphone', w.start, w.end, reducible).minutes,
     });
   }
 
