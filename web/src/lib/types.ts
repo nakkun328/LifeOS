@@ -69,3 +69,18 @@ export type LogRow = {
   /** 決定事項の件名（任意。例：文化祭2027） */
   title?: string | null;
 };
+
+export type WishRow = {
+  id: string;
+  name: string;
+  price: number | null;
+  category: string | null;
+  product_url: string | null;
+  docs_url: string | null;
+  /** 1=高 2=中 3=低 */
+  priority: number | null;
+  purchased: boolean;
+  purchased_at: string | null;
+  memo: string | null;
+  created_at: string;
+};

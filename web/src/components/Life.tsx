@@ -2,7 +2,7 @@
 import { formatDelta } from '@/lib/digital';
 import { formatMinutes } from '@/lib/messages';
 import { useApi } from '@/lib/useApi';
-import type { LogRow } from '@/lib/types';
+import type { LogRow, WishRow } from '@/lib/types';
 import type { TodayView } from '@/server/handlers/today';
 import { AppShell } from './AppShell';
 import { Card } from './Card';
@@ -11,6 +11,7 @@ import { Card } from './Card';
 export function LifePage() {
   const { data: v, error } = useApi<TodayView>('/api/today', 60_000);
   const { data: decisions } = useApi<LogRow[]>('/api/decisions?limit=1');
+  const { data: wishes } = useApi<WishRow[]>('/api/wishlist');
   const last = v?.sleep.lastNight;
   const d = v?.digital.day;
   return (
@@ -32,6 +33,9 @@ export function LifePage() {
         </Card>
         <Card href="/life/decisions" title="決定事項（部活）">
           <div className="sub">{decisions && decisions[0] ? `最新：${decisions[0].title ? `${decisions[0].title} ／ ` : ''}${decisions[0].body}` : 'キーワードで探せます'}</div>
+        </Card>
+        <Card href="/life/wishlist" title="Wishlist">
+          <div className="sub">{wishes ? `欲しい物 ${wishes.filter((w) => !w.purchased).length}件` : '欲しい物を1か所に'}</div>
         </Card>
       </div>
     </AppShell>
