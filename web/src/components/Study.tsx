@@ -2,8 +2,10 @@
 import { formatClock } from '@/lib/jst';
 import { formatDuration, formatDurationDelta } from '@/lib/messages';
 import { useApi } from '@/lib/useApi';
+import type { WordsSummary } from '@/lib/words';
 import type { StudyView } from '@/server/handlers/study';
 import { AppShell } from './AppShell';
+import { Card } from './Card';
 import { StudyTimer } from './StudyTimer';
 
 function Breakdown({ rows, total }: { rows: Array<{ subject_id: string | null; name: string; seconds: number }>; total: number }) {
@@ -23,6 +25,7 @@ function Breakdown({ rows, total }: { rows: Array<{ subject_id: string | null; n
 /** 科目別の時間（今日・今週）、今日のタイムライン、今週の合計と先週との差 */
 export function StudyPage() {
   const { data: v, error, act } = useApi<StudyView>('/api/study', 30_000);
+  const { data: words } = useApi<WordsSummary>('/api/words', 60_000);
   if (!v) {
     return <AppShell title="Study"><div className="muted">読み込み中…</div><div className="err">{error}</div></AppShell>;
   }
@@ -35,6 +38,12 @@ export function StudyPage() {
           <h2>タイマー</h2>
           <StudyTimer subjects={v.subjects} active={v.active} act={act} />
         </section>
+
+        <Card href="/study/words" title="英単語">
+          <div className="sub">
+            {words ? (words.total === 0 ? '単語を登録して、復習を始めましょう' : `今日の復習 ${words.dueCount}語${words.nextTest ? `　${words.nextTest.name} あと${words.nextTest.days_left}日` : ''}`) : '復習・テスト・苦手な単語'}
+          </div>
+        </Card>
 
         <section className="card">
           <h2>今日</h2>

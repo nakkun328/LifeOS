@@ -98,5 +98,10 @@
     "name": "sleep",
     "description": "寝る（就寝時刻を記録）",
     "type": 1
+  },
+  {
+    "name": "words",
+    "description": "今日の英単語の復習と、テストまでの日数を見る",
+    "type": 1
   }
 ]

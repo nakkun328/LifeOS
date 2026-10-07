@@ -2,6 +2,7 @@ import { formatClock } from '@/lib/jst';
 import { formatDelta } from '@/lib/digital';
 import { dueMessage, formatDuration } from '@/lib/messages';
 import type { TaskView } from '../handlers/tasks';
+import type { WordsSummary } from '@/lib/words';
 import type { WeekView } from '../handlers/week';
 import type { TodayView } from '../handlers/today';
 
@@ -71,4 +72,16 @@ export function formatTasks(tasks: TaskView[]): string {
     lines.push(`・${t.title}${status}　${dueMessage(t.days_left)}（${t.due_date}）${meta ? `　${meta}` : ''}`);
   }
   return lines.join('\n').slice(0, 1900);
+}
+
+/** 今日の復習の件数と、テストまでの日数（/words） */
+export function formatWords(w: WordsSummary): string {
+  if (w.total === 0) return '**📖 英単語**\nまだ単語がありません。Web の Study > 英単語 から登録できます。';
+  const lines = ['**📖 英単語**', `今日の復習 ${w.dueCount}語`];
+  if (w.nextTest) {
+    const left = w.nextTest.days_left === 0 ? '今日' : `あと${w.nextTest.days_left}日`;
+    lines.push(`${w.nextTest.name}　${left}・未習得 ${w.nextTest.unmastered}語`);
+  }
+  if (w.counts.weak > 0) lines.push(`苦手な単語 ${w.counts.weak}語`);
+  return lines.join('\n');
 }

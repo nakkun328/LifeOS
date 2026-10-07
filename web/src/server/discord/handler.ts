@@ -12,8 +12,9 @@ import { listSubjects } from '../handlers/subjects';
 import { getAppSettings } from '../handlers/settings';
 import { createTask, listTasks } from '../handlers/tasks';
 import { buildToday } from '../handlers/today';
+import { getWordsSummary } from '../handlers/words';
 import { buildWeek } from '../handlers/week';
-import { formatTasks, formatToday, formatWeek } from './format';
+import { formatTasks, formatToday, formatWeek, formatWords } from './format';
 
 export type Interaction = {
   type: number;
@@ -93,6 +94,8 @@ async function handleCommand(ctx: Ctx, i: Interaction): Promise<InteractionRespo
       const d = await addLog(ctx, { kind: 'decision', body: optionValue(i, 'text'), title: optionValue(i, 'title') });
       return reply(`📌 決定事項を残しました${d.title ? `（${d.title}）` : ''}\n${d.body}`);
     }
+    case 'words':
+      return reply(formatWords(await getWordsSummary(ctx)));
     case 'tasks': {
       const open = (await listTasks(ctx)).filter((t) => t.status !== 'done').slice(0, 10);
       return reply(formatTasks(open));

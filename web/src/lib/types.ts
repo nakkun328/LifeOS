@@ -84,3 +84,21 @@ export type WishRow = {
   memo: string | null;
   created_at: string;
 };
+
+export type WordStatus = 'new' | 'learning' | 'weak' | 'review' | 'mastered';
+export type WordRow = {
+  id: string;
+  word: string;
+  meaning: string;
+  weakness: number;
+  status: WordStatus;
+  streak: number;
+  correct_count: number;
+  wrong_count: number;
+  first_studied: string | null;
+  last_studied: string | null;
+  next_review: string | null;
+  test_id: string | null;
+  created_at: string;
+};
+export type WordTestRow = { id: string; name: string; due_date: string; created_at: string };

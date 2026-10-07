@@ -5,6 +5,7 @@ import { formatClock, jstParts, parseHm } from '@/lib/jst';
 import { formatDuration, formatMinutes, sleepRemainingMs } from '@/lib/messages';
 import { useApi, useNow } from '@/lib/useApi';
 import type { TodayView } from '@/server/handlers/today';
+import Link from 'next/link';
 import { AppShell, SettingsLink } from './AppShell';
 import { Card } from './Card';
 import { LogInput } from './LogInput';
@@ -37,6 +38,7 @@ export function Today() {
         <SleepCard view={view} act={act} />
         <StudyCard view={view} act={act} />
         <TasksCard view={view} act={act} />
+        <WordsCard view={view} />
         <DigitalCard view={view} />
         <LogsCard view={view} act={act} />
       </div>
@@ -143,6 +145,26 @@ function LogsCard({ view, act }: { view: TodayView; act: Act }) {
         <ul className="plain" style={{ marginTop: 8 }}>
           {view.logsToday.map((l) => <li key={l.id}><span>{l.body}</span><span className="pill">{l.tag}</span></li>)}
         </ul>
+      )}
+    </Card>
+  );
+}
+
+/** 今日の復習の件数と、テストまでの日数。ここから、すぐ復習を始められる */
+function WordsCard({ view }: { view: TodayView }) {
+  const w = view.words;
+  return (
+    <Card href="/study/words" title="英単語">
+      {w.total === 0 ? (
+        <div className="sub">単語を登録すると、復習が出ます</div>
+      ) : (
+        <>
+          <div className="lead">今日の復習 {w.dueCount}語</div>
+          {w.nextTest && (
+            <div className="sub">英単語テスト {w.nextTest.days_left === 0 ? '今日' : `あと${w.nextTest.days_left}日`}・未習得 {w.nextTest.unmastered}語</div>
+          )}
+          {w.dueCount > 0 && <div style={{ marginTop: 10 }}><Link href="/study/words/review" className="btn primary">復習する</Link></div>}
+        </>
       )}
     </Card>
   );

@@ -14,7 +14,8 @@ import { bedDiffMessage, formatAvgBed } from '@/lib/messages';
 import { durationMinutes } from '@/lib/sleepStats';
 import { studyBySubject, type SubjectSeconds } from '@/lib/study';
 import { upcoming } from '@/lib/tasks';
-import type { AppEventRow, GuardEventRow, LogRow, SessionRow, SleepRow, SubjectRow, UsageRow } from '@/lib/types';
+import type { AppEventRow, GuardEventRow, LogRow, SessionRow, SleepRow, SubjectRow, UsageRow, WordRow, WordTestRow } from '@/lib/types';
+import { wordsSummary } from '@/lib/words';
 import type { Ctx } from '../context';
 import { listTodayLogs } from './logs';
 import { getActiveSession, isLongRunning } from './sessions';
@@ -40,6 +41,8 @@ export type TodayView = {
   };
   tasks: TaskView[];
   logsToday: LogRow[];
+  /** 英単語：今日の復習の件数と、いちばん近いテスト */
+  words: { total: number; dueCount: number; nextTest: { name: string; days_left: number; unmastered: number } | null };
   digital: {
     /** 昨日（朝6時〜今朝6時）の、減らしたい時間の合計と前日比 */
     day: { date: string; minutes: number; musicMinutes: number; diffMinutes: number | null };
@@ -65,7 +68,7 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
   // 昨日・一昨日の1日ぶんと、昨夜の窓をすべて含む範囲（iPhone の区間は前の日から始まることがあるので6時間広げる）
   const usageFrom = addDaysIso(new Date(Math.min(dayStart(addDays(todayKey, -2), config.boundaryMin).getTime(), win.start.getTime()) - 6 * 3600_000), 0);
 
-  const [subjects, active, sessions, sleepRows, tasks, logsToday, usageRows, appEvents, guardRows] = await Promise.all([
+  const [subjects, active, sessions, sleepRows, tasks, logsToday, usageRows, appEvents, guardRows, wordRows, wordTests] = await Promise.all([
     listSubjects(ctx),
     getActiveSession(ctx),
     db.select<SessionRow>('sessions', { gte: { started_at: addDaysIso(weekStart, -1) } }),
@@ -75,7 +78,10 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
     db.select<UsageRow>('usage', { gte: { start: usageFrom } }),
     db.select<AppEventRow>('app_events', { gte: { at: usageFrom } }),
     db.select<GuardEventRow>('guard_events', { gte: { at: dayStart(nightKey, config.boundaryMin).toISOString() } }),
+    db.select<WordRow>('english_words'),
+    db.select<WordTestRow>('word_tests'),
   ]);
+  const words = wordsSummary(wordRows, wordTests, todayKey);
   // 週の頭をまたいで始まったセッションも拾うため、1日ぶん広めに取って重なりで数える
   const running = active && !sessions.some((s) => s.id === active.id) ? [...sessions, active] : sessions;
 
@@ -120,6 +126,11 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
     },
     tasks: upcoming(tasks, 3) as TaskView[],
     logsToday,
+    words: {
+      total: words.total,
+      dueCount: words.dueCount,
+      nextTest: words.nextTest ? { name: words.nextTest.name, days_left: words.nextTest.days_left, unmastered: words.nextTest.unmastered } : null,
+    },
     digital: {
       day: {
         date: yesterday.date,
