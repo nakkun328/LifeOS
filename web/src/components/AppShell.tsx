@@ -7,11 +7,12 @@ const TABS = [
   { href: '/study', label: 'Study', icon: '📚' },
   { href: '/tasks', label: 'Tasks', icon: '📝' },
   { href: '/life', label: 'Life', icon: '🌿' },
+  { href: '/insights', label: 'Insights', icon: '📊' },
 ];
 
 const isActive = (path: string, href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`));
 
-/** 下部ナビゲーション（スマホは画面の下、PC は上）。タブは4つだけ */
+/** 下部ナビゲーション（スマホは画面の下、PC は上）。タブは5つだけ */
 function BottomNav() {
   const path = usePathname();
   return (

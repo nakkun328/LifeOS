@@ -4,6 +4,7 @@ import { formatDelta } from '@/lib/digital';
 import { formatClock, jstParts, parseHm } from '@/lib/jst';
 import { formatDuration, formatMinutes, sleepRemainingMs } from '@/lib/messages';
 import { useApi, useNow } from '@/lib/useApi';
+import type { InsightsView } from '@/server/handlers/insights';
 import type { TodayView } from '@/server/handlers/today';
 import Link from 'next/link';
 import { AppShell, SettingsLink } from './AppShell';
@@ -40,6 +41,7 @@ export function Today() {
         <TasksCard view={view} act={act} />
         <WordsCard view={view} />
         <DigitalCard view={view} />
+        <InsightCard />
         <LogsCard view={view} act={act} />
       </div>
       <p className="muted" style={{ textAlign: 'center', marginTop: 16 }}>
@@ -165,6 +167,28 @@ function WordsCard({ view }: { view: TodayView }) {
           )}
           {w.dueCount > 0 && <div style={{ marginTop: 10 }}><Link href="/study/words/review" className="btn primary">復習する</Link></div>}
         </>
+      )}
+    </Card>
+  );
+}
+
+/** その日いちばん意味のある1件だけ。データが足りないうちは、あと何件で出るかを添える */
+function InsightCard() {
+  const { data: v } = useApi<InsightsView>('/api/insights');
+  return (
+    <Card href="/insights" title="Insights">
+      {v === null ? (
+        <div className="sub">読み込み中…</div>
+      ) : v.top ? (
+        <>
+          <div>{v.top.text}</div>
+          <div className="sub">もとにした件数：{v.top.n}{v.top.unit}</div>
+        </>
+      ) : (
+        <div className="sub">
+          データがたまると、ここに傾向が出ます。
+          {v.nearest && `（${v.nearest.label}：あと${v.nearest.remaining}${v.nearest.unit}）`}
+        </div>
       )}
     </Card>
   );
