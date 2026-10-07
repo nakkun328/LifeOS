@@ -38,3 +38,16 @@ export async function authenticate(authorization: string | null, deps: AuthDeps,
   }
   return false;
 }
+
+/**
+ * 定期実行（Vercel Cron など）の認証。Vercel は、環境変数 CRON_SECRET があると
+ * `Authorization: Bearer <CRON_SECRET>` を付けて呼ぶ。個人用トークン（LIFEOS_API_TOKEN）でも呼べる（外部のスケジューラ用）。
+ * どちらも未設定なら、誰も呼べない。
+ */
+export function authorizeCron(authorization: string | null, deps: { cronSecret?: string; apiToken?: string }): boolean {
+  const m = /^Bearer\s+(.+)$/i.exec(authorization ?? '');
+  if (!m) return false;
+  const token = m[1]!.trim();
+  if (deps.cronSecret && safeEqual(token, deps.cronSecret)) return true;
+  return !!deps.apiToken && safeEqual(token, deps.apiToken);
+}

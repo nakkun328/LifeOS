@@ -32,3 +32,34 @@ export function dueMessage(daysLeft: number): string {
   if (daysLeft === 0) return '今日が期限';
   return `期限から${-daysLeft}日（落ち着いて、できるところから）`;
 }
+
+/** 週の平均就寝の比較。数字を中心に、責めない言い方で */
+export function weekBedMessage(diffMin: number | null): string | null {
+  if (diffMin === null) return null;
+  const m = Math.abs(Math.round(diffMin));
+  if (m === 0) return '先週と同じ平均就寝です';
+  return diffMin < 0 ? `先週より${m}分早い平均就寝です` : `先週より${m}分遅めの平均就寝です`;
+}
+
+export function weekDurationMessage(diffMin: number | null): string | null {
+  if (diffMin === null) return null;
+  const m = Math.abs(Math.round(diffMin));
+  if (m === 0) return '先週と同じ平均睡眠時間です';
+  return diffMin > 0 ? `先週より平均${m}分長く眠れています` : `先週より平均${m}分短めです`;
+}
+
+/** 分を「6時間47分」の形に */
+export function formatMinutes(totalMinutes: number): string {
+  const m = Math.max(0, Math.round(totalMinutes));
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h}時間${m % 60}分` : `${m}分`;
+}
+
+/** 時間の増減を数字だけで出す。例：+1時間12分、−30分、±0分（評価の言葉は付けない） */
+export function formatDurationDelta(seconds: number): string {
+  const m = Math.round(Math.abs(seconds) / 60);
+  if (m === 0) return '±0分';
+  const h = Math.floor(m / 60);
+  const body = h > 0 ? `${h}時間${m % 60}分` : `${m}分`;
+  return `${seconds < 0 ? '−' : '+'}${body}`;
+}

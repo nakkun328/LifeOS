@@ -35,12 +35,13 @@ export function classify(rawUrl: string, allowedPlaylists: string[]): Target | n
   }
   if (isHost(host, 'x.com') || isHost(host, 'twitter.com')) return { site: 'x', isShorts: false };
   if (isHost(host, 'instagram.com')) return { site: 'instagram', isShorts: false };
+  if (isHost(host, 'tiktok.com')) return { site: 'tiktok', isShorts: false };
   return null;
 }
 
 /**
- * - soft 以降: Shorts・X・Instagram
- * - hard 以降: YouTube 全体（ホーム・検索・チャンネルも）
+ * - soft（Level 1）以降: Shorts・X・Instagram・TikTok
+ * - hard（Level 2）以降: YouTube 全体（ホーム・検索・チャンネルも）
  * - サイト別の一時解除中は通す
  */
 export function shouldBlock(stage: Stage, target: Target, unlocks: Unlocks, nowMs: number): boolean {

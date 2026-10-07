@@ -1,4 +1,4 @@
-export type Site = 'youtube' | 'x' | 'instagram';
+export type Site = 'youtube' | 'x' | 'instagram' | 'tiktok';
 export type Stage = 'none' | 'prepare' | 'soft' | 'hard';
 
 export type Settings = {

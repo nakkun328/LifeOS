@@ -7,16 +7,21 @@ export function daysLeft(dueDate: string, todayKey: string): number {
   return Math.round(ms / 86_400_000);
 }
 
-/** 期限の近い順。同じ期限なら未着手・途中を先に、そのあとは作成順 */
+/** 期限の近い順。同じ期限なら優先度の高い順（未設定は最後）、途中 → 未着手、作成順 */
 export function sortByDue(tasks: TaskRow[]): TaskRow[] {
   const rank = { doing: 0, todo: 1, done: 2 } as const;
+  const prio = (t: TaskRow) => t.priority ?? 9;
   return [...tasks].sort(
     (a, b) =>
       a.due_date.localeCompare(b.due_date) ||
+      prio(a) - prio(b) ||
       rank[a.status] - rank[b.status] ||
       a.created_at.localeCompare(b.created_at),
   );
 }
+
+export const CATEGORY_LABEL = { school: '学校', club: '部活', personal: '個人' } as const;
+export const PRIORITY_LABEL: Record<number, string> = { 1: '高', 2: '中', 3: '低' };
 
 /** 未完了のうち、期限の近い順に n 件（Today 用）。期限切れも先頭に出す */
 export function upcoming(tasks: TaskRow[], n = 3): TaskRow[] {

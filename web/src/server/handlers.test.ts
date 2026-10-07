@@ -141,7 +141,7 @@ describe('ingest（拡張からの送信）', () => {
       items: [
         usage('2026-10-07T00:10:00', 30, 'youtube'),
         usage('2026-10-07T00:11:00', 600, 'youtube'), // 1分バケットに収まらない
-        usage('2026-10-07T00:12:00', 30, 'tiktok'),
+        usage('2026-10-07T00:12:00', 30, 'netflix'),
         { type: 'nope' },
         'x',
       ],
@@ -177,12 +177,12 @@ describe('Today（昨夜の結果）', () => {
       ],
     });
     const t = await buildToday(ctx);
-    expect(t.digital.nightDate).toBe('2026-10-06');
-    expect(t.digital.mac.minutes).toBe(2);
-    expect(t.digital.mac.byCategory).toEqual({ youtube_shorts: 2 });
-    expect(t.digital.mac.musicMinutes).toBe(1);
-    expect(t.digital.unlocks).toBe(1);
-    expect(t.digital.blocked).toBe(1);
+    expect(t.digital.night.nightDate).toBe('2026-10-06');
+    expect(t.digital.night.mac.minutes).toBe(2);
+    expect(t.digital.night.mac.byCategory).toEqual({ youtube_shorts: 2 });
+    expect(t.digital.night.mac.musicMinutes).toBe(1);
+    expect(t.digital.night.unlocks).toBe(1);
+    expect(t.digital.night.blocked).toBe(1);
   });
 
   it('就寝：前日との差と平日平均', async () => {

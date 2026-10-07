@@ -1,7 +1,7 @@
 import { isHost } from './hosts';
 
 /** 利用時間のカテゴリ。youtube_music は「減らしたい時間」に含めない */
-export type UsageCategory = 'youtube' | 'youtube_shorts' | 'youtube_music' | 'x' | 'instagram';
+export type UsageCategory = 'youtube' | 'youtube_shorts' | 'youtube_music' | 'x' | 'instagram' | 'tiktok';
 
 /**
  * 計測の対象か判定する。制限の判定（classify）と違い、音楽も別枠として数える。
@@ -27,6 +27,7 @@ export function classifyUsage(rawUrl: string, allowedPlaylists: string[]): Usage
   }
   if (isHost(host, 'x.com') || isHost(host, 'twitter.com')) return 'x';
   if (isHost(host, 'instagram.com')) return 'instagram';
+  if (isHost(host, 'tiktok.com')) return 'tiktok';
   return null;
 }
 

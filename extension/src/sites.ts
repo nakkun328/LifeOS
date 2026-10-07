@@ -4,4 +4,5 @@ export const TAB_PATTERNS = [
   'https://*.x.com/*',
   'https://*.twitter.com/*',
   'https://*.instagram.com/*',
+  'https://*.tiktok.com/*',
 ];

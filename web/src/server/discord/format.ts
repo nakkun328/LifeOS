@@ -1,5 +1,8 @@
 import { formatClock } from '@/lib/jst';
+import { formatDelta } from '@/lib/digital';
 import { dueMessage, formatDuration } from '@/lib/messages';
+import type { TaskView } from '../handlers/tasks';
+import type { WordsSummary } from '@/lib/words';
 import type { WeekView } from '../handlers/week';
 import type { TodayView } from '../handlers/today';
 
@@ -27,7 +30,9 @@ export function formatToday(v: TodayView): string {
   }
   if (s.weekdayAvgBed) lines.push(`　平日の平均就寝 ${s.weekdayAvgBed}`);
   const d = v.digital;
-  lines.push(`📱 昨夜のDigital（23:30以降） Mac ${d.mac.minutes}分 / iPhone ${d.iphone.minutes}分 / 一時解除 ${d.unlocks}回`);
+  const delta = d.day.diffMinutes === null ? '' : `（昨日より${formatDelta(d.day.diffMinutes)}）`;
+  lines.push(`📱 昨日のDigital ${d.day.minutes}分${delta}`);
+  lines.push(`　昨夜（23:30以降） Mac ${d.night.mac.minutes}分 / iPhone ${d.night.iphone.minutes}分 / 一時解除 ${d.night.unlocks}回`);
   if (v.tasks.length > 0) {
     lines.push('📝 課題');
     for (const t of v.tasks) lines.push(`　・${t.title}　${dueMessage(t.days_left)}`);
@@ -54,4 +59,37 @@ export function formatWeek(w: WeekView): string {
     for (const g of w.digital) lines.push(`　${md(g.night_date)}(${dowOf(g.night_date)}) ${g.macMinutes}分 / ${g.iphoneMinutes}分`);
   }
   return lines.join('\n').slice(0, 1900);
+}
+
+/** 期限が近い課題の一覧（/tasks） */
+export function formatTasks(tasks: TaskView[]): string {
+  if (tasks.length === 0) return '**📝 課題**\n期限が近い課題はありません。';
+  const CAT = { school: '学校', club: '部活', personal: '個人' } as const;
+  const lines = ['**📝 課題（期限の近い順）**'];
+  for (const t of tasks) {
+    const meta = [t.category ? CAT[t.category] : null, t.subject_name].filter(Boolean).join('・');
+    const status = t.status === 'doing' ? '［途中］' : '';
+    lines.push(`・${t.title}${status}　${dueMessage(t.days_left)}（${t.due_date}）${meta ? `　${meta}` : ''}`);
+  }
+  return lines.join('\n').slice(0, 1900);
+}
+
+/** 今日の復習の件数と、テストまでの日数（/words） */
+export function formatWords(w: WordsSummary): string {
+  if (w.total === 0) return '**📖 英単語**\nまだ単語がありません。Web の Study > 英単語 から登録できます。';
+  const lines = ['**📖 英単語**', `今日の復習 ${w.dueCount}語`];
+  if (w.nextTest) {
+    const left = w.nextTest.days_left === 0 ? '今日' : `あと${w.nextTest.days_left}日`;
+    lines.push(`${w.nextTest.name}　${left}・未習得 ${w.nextTest.unmastered}語`);
+  }
+  if (w.counts.weak > 0) lines.push(`苦手な単語 ${w.counts.weak}語`);
+  return lines.join('\n');
+}
+
+/** 今日の日記（/journal）。Discord の本文は 2000 文字までなので、余裕をもって切る */
+export function formatJournal(j: { date: string; body: string }): string {
+  const head = `**📝 日記 ${j.date}**`;
+  if (!j.body.trim()) return `${head}\nまだ記録がありません。勉強やログを残すと、日記ができます。`;
+  const body = j.body.length > 1800 ? `${j.body.slice(0, 1800)}…` : j.body;
+  return `${head}\n${body}`;
 }

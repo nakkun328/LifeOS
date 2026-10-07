@@ -3,16 +3,21 @@
 import { dayKey, jstParts, parseHm } from '@/lib/jst';
 import { formatDuration, sleepRemainingMs } from '@/lib/messages';
 import { parseDue } from '@/lib/due';
+import { labelOf, motivBar } from '@/lib/motivation';
 import type { Ctx } from '../context';
 import { HttpError } from '../errors';
 import { addLog } from '../handlers/logs';
 import { startSession, stopSession } from '../handlers/sessions';
 import { recordBed, recordWake } from '../handlers/sleep';
 import { listSubjects } from '../handlers/subjects';
-import { createTask } from '../handlers/tasks';
+import { getAppSettings } from '../handlers/settings';
+import { createTask, listTasks } from '../handlers/tasks';
 import { buildToday } from '../handlers/today';
+import { getJournal } from '../handlers/journal';
+import { setMotivationItem } from '../handlers/motivation';
+import { getWordsSummary } from '../handlers/words';
 import { buildWeek } from '../handlers/week';
-import { formatToday, formatWeek } from './format';
+import { formatJournal, formatTasks, formatToday, formatWeek, formatWords } from './format';
 
 export type Interaction = {
   type: number;
@@ -53,6 +58,11 @@ export const PANEL_COMPONENTS = [
   { type: 1, components: [button('今日', 'panel:today'), button('今週', 'panel:week')] },
 ];
 
+const optionNumber = (i: Interaction, name: string): number | null => {
+  const v = i.data?.options?.find((o) => o.name === name)?.value;
+  return typeof v === 'number' ? v : null;
+};
+
 const optionValue = (i: Interaction, name: string): string => {
   const v = i.data?.options?.find((o) => o.name === name)?.value;
   return typeof v === 'string' ? v : '';
@@ -87,6 +97,22 @@ async function handleCommand(ctx: Ctx, i: Interaction): Promise<InteractionRespo
     case 'log': {
       const log = await addLog(ctx, { tag: optionValue(i, 'tag'), body: optionValue(i, 'text') });
       return reply(`💬 [${log.tag}] ${log.body}`);
+    }
+    case 'decision': {
+      const d = await addLog(ctx, { kind: 'decision', body: optionValue(i, 'text'), title: optionValue(i, 'title') });
+      return reply(`📌 決定事項を残しました${d.title ? `（${d.title}）` : ''}\n${d.body}`);
+    }
+    case 'motiv': {
+      const r = await setMotivationItem(ctx, optionValue(i, 'item'), optionNumber(i, 'score'));
+      return reply(`✅ ${labelOf(r.key)} を ${r.score}/10 で記録したよ！\n${motivBar(r.score)}`);
+    }
+    case 'words':
+      return reply(formatWords(await getWordsSummary(ctx)));
+    case 'journal':
+      return reply(formatJournal(await getJournal(ctx)));
+    case 'tasks': {
+      const open = (await listTasks(ctx)).filter((t) => t.status !== 'done').slice(0, 10);
+      return reply(formatTasks(open));
     }
     case 'task': {
       const due = parseDue(optionValue(i, 'due'), dayKey(ctx.now, ctx.config.boundaryMin));
@@ -163,6 +189,7 @@ async function bed(ctx: Ctx): Promise<string> {
   const hhmm = `${String(at.hh).padStart(2, '0')}:${String(at.mm).padStart(2, '0')}`;
   if (!created) return `すでに ${hhmm} に就寝を記録しています。`;
   const p = jstParts(ctx.now);
-  const ms = sleepRemainingMs(ctx.now.getTime(), p.hh * 60 + p.mm, parseHm(ctx.config.wakeTime) ?? 375);
+  const wake = (await getAppSettings(ctx)).sleep.wakeTime; // 起床予定は Settings の値
+  const ms = sleepRemainingMs(ctx.now.getTime(), p.hh * 60 + p.mm, parseHm(wake) ?? 375);
   return `おやすみなさい 🌙 ${hhmm} に記録しました。今寝れば ${formatDuration(ms / 1000)} 眠れます。`;
 }

@@ -15,12 +15,27 @@
         "type": 3,
         "required": true,
         "choices": [
-          { "name": "趣味", "value": "趣味" },
-          { "name": "部活", "value": "部活" },
-          { "name": "日記", "value": "日記" }
+          {
+            "name": "趣味",
+            "value": "趣味"
+          },
+          {
+            "name": "部活",
+            "value": "部活"
+          },
+          {
+            "name": "日記",
+            "value": "日記"
+          }
         ]
       },
-      { "name": "text", "description": "本文（1行）", "type": 3, "required": true, "max_length": 200 }
+      {
+        "name": "text",
+        "description": "本文（1行）",
+        "type": 3,
+        "required": true,
+        "max_length": 200
+      }
     ]
   },
   {
@@ -28,11 +43,117 @@
     "description": "課題を追加する",
     "type": 1,
     "options": [
-      { "name": "name", "description": "課題名", "type": 3, "required": true, "max_length": 100 },
-      { "name": "due", "description": "期限（例：10/9、明日、3日後、2026-10-09）", "type": 3, "required": true }
+      {
+        "name": "name",
+        "description": "課題名",
+        "type": 3,
+        "required": true,
+        "max_length": 100
+      },
+      {
+        "name": "due",
+        "description": "期限（例：10/9、明日、3日後、2026-10-09）",
+        "type": 3,
+        "required": true
+      }
     ]
   },
-  { "name": "today", "description": "今日のまとめを見る", "type": 1 },
-  { "name": "week", "description": "今週のまとめを見る", "type": 1 },
-  { "name": "sleep", "description": "寝る（就寝時刻を記録）", "type": 1 }
+  {
+    "name": "decision",
+    "description": "部活の決定事項を残す",
+    "type": 1,
+    "options": [
+      {
+        "name": "text",
+        "description": "決まったこと",
+        "type": 3,
+        "required": true,
+        "max_length": 500
+      },
+      {
+        "name": "title",
+        "description": "件名（例：文化祭2027）",
+        "type": 3,
+        "required": false,
+        "max_length": 60
+      }
+    ]
+  },
+  {
+    "name": "today",
+    "description": "今日のまとめを見る",
+    "type": 1
+  },
+  {
+    "name": "tasks",
+    "description": "期限が近い課題の一覧を見る",
+    "type": 1
+  },
+  {
+    "name": "week",
+    "description": "今週のまとめを見る",
+    "type": 1
+  },
+  {
+    "name": "sleep",
+    "description": "寝る（就寝時刻を記録）",
+    "type": 1
+  },
+  {
+    "name": "words",
+    "description": "今日の英単語の復習と、テストまでの日数を見る",
+    "type": 1
+  },
+  {
+    "name": "journal",
+    "description": "今日の日記を表示",
+    "type": 1
+  },
+  {
+    "name": "motiv",
+    "description": "今日のモチベを1項目だけ記録する",
+    "type": 1,
+    "options": [
+      {
+        "name": "item",
+        "description": "項目",
+        "type": 3,
+        "required": true,
+        "choices": [
+          {
+            "name": "物理部関連",
+            "value": "phys"
+          },
+          {
+            "name": "写真",
+            "value": "photo"
+          },
+          {
+            "name": "動画編集",
+            "value": "video"
+          },
+          {
+            "name": "野球観戦",
+            "value": "baseball"
+          },
+          {
+            "name": "プロスピ",
+            "value": "prospi"
+          },
+          {
+            "name": "その他ゲーム",
+            "value": "game"
+          }
+        ]
+      },
+      {
+        "name": "score",
+        "description": "点数（1〜10）",
+        "type": 4,
+        "required": true,
+        "min_value": 1,
+        "max_value": 10
+      }
+    ]
+  }
 ]

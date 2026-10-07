@@ -40,6 +40,7 @@ export type GuardEventRow = {
 export type AppEventRow = { app: string; event: 'open' | 'close'; at: string };
 
 export type TaskStatus = 'todo' | 'doing' | 'done';
+export type TaskCategory = 'school' | 'club' | 'personal';
 export type TaskRow = {
   id: string;
   title: string;
@@ -47,7 +48,78 @@ export type TaskRow = {
   status: TaskStatus;
   created_at: string;
   done_at: string | null;
+  /** 以下はすべて任意（課題名と期限だけで登録できる）。既存の行では null / undefined */
+  subject_id?: string | null;
+  category?: TaskCategory | null;
+  /** 1=高 2=中 3=低 */
+  priority?: number | null;
+  memo?: string | null;
 };
 
 export type LogTag = '趣味' | '部活' | '日記';
-export type LogRow = { id: string; body: string; tag: LogTag; created_at: string; log_date: string };
+export type LogKind = 'log' | 'decision';
+export type LogRow = {
+  id: string;
+  body: string;
+  tag: LogTag;
+  created_at: string;
+  log_date: string;
+  /** 既存の行は 'log'（未設定でも 'log' として扱う） */
+  kind?: LogKind;
+  /** 決定事項の件名（任意。例：文化祭2027） */
+  title?: string | null;
+};
+
+export type WishRow = {
+  id: string;
+  name: string;
+  price: number | null;
+  category: string | null;
+  product_url: string | null;
+  docs_url: string | null;
+  /** 1=高 2=中 3=低 */
+  priority: number | null;
+  purchased: boolean;
+  purchased_at: string | null;
+  memo: string | null;
+  created_at: string;
+};
+
+export type WordStatus = 'new' | 'learning' | 'weak' | 'review' | 'mastered';
+export type WordRow = {
+  id: string;
+  word: string;
+  meaning: string;
+  weakness: number;
+  status: WordStatus;
+  streak: number;
+  correct_count: number;
+  wrong_count: number;
+  first_studied: string | null;
+  last_studied: string | null;
+  next_review: string | null;
+  test_id: string | null;
+  created_at: string;
+};
+export type WordTestRow = { id: string; name: string; due_date: string; created_at: string };
+
+export type JournalRow = {
+  id: string;
+  entry_date: string;
+  body: string;
+  /** 手で編集した日記は、自動で上書きしない */
+  edited: boolean;
+  generated_at: string | null;
+  updated_at: string;
+  created_at: string;
+};
+
+export type MotivationRow = {
+  id: string;
+  record_date: string;
+  /** 項目ごとの点数（1〜10）。記録していない項目はキーごと無い */
+  scores: Record<string, number>;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+};
