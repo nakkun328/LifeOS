@@ -18,6 +18,7 @@ Life OS で、人の手で行う作業（アカウント作成・環境変数・
 **SQL Editor** を開き、`supabase/migrations/` の SQL を**番号順に**貼って実行する（Phase が進むと増えます）。
 - `0001_init.sql`（Phase 2）
 - `0002_tasks_logs.sql`（Phase 3）
+- `0003_os_shape.sql`（Phase 5.5。手順は下の「Phase 5.5」）
 
 > Supabase CLI を使う場合は `supabase link` のあと `supabase db push` でも同じです。
 
@@ -36,7 +37,6 @@ Life OS で、人の手で行う作業（アカウント作成・環境変数・
 | `SUPABASE_SERVICE_ROLE_KEY` | 手順1の値（サーバー専用） |
 | `LIFEOS_OWNER_EMAIL` | 手順3で作ったメールアドレス |
 | `LIFEOS_API_TOKEN` | 拡張・iPhone 用の個人用トークン。`openssl rand -hex 32` で作る |
-| `LIFEOS_WAKE_TIME` | 起床時刻（任意。既定 `06:15`） |
 
 ### 5. 手元で動かして確認する
 ```sh
@@ -130,3 +130,55 @@ Discord で `/panel` と入力すると、ボタンのパネルが出ます。
 
 - iPhone 専用のトークン（`LIFEOS_IPHONE_TOKEN`、20文字以上）を作り、Vercel の環境変数に登録して、**Production** を再デプロイします。
 - このトークンで呼べるのは、睡眠とアプリ利用の送信だけです。漏れたら、Vercel の値を新しいものに変えて再デプロイし、ショートカットのヘッダーも更新します。
+
+---
+
+## Phase 5.5：OSとしての形を整える（Settings・決定事項・TikTok など）
+
+**順番が大事です。先に ① データベース、そのあと ② 公開（マージ）、③ 拡張、④ Discord の順に進めてください。**
+データベースを更新する前に新しい Web を公開すると、Today などが「テーブルがありません」で開けなくなります。
+
+### ① データベースを更新する（Supabase）
+既存のデータは、そのまま残ります（`0003` は、テーブルと列を**足すだけ**です。既存の列・行には触れません）。
+
+1. Supabase の **SQL Editor** → **New query** を開く。
+2. `supabase/migrations/0003_os_shape.sql` の中身を貼り付けて **Run**。
+   - 手元で、ターミナルから `pbcopy < supabase/migrations/0003_os_shape.sql` を実行して、クリップボードにコピーすると楽です。
+3. **Success. No rows returned** と出れば完了。
+4. 確認：**Table Editor** に `settings` テーブルが増えている。`tasks` に `subject_id` `category` `priority` `memo`、`logs` に `kind` `title` の列が増えている。既存の行は、列が空（`logs.kind` は `log`）のまま残っている。
+
+### ② Web を公開する
+`claude/upbeat-hopper-0jov1f` ブランチを `main` にマージすると、Vercel が自動で公開します（1〜2分）。
+公開後、Web を開いて、**下部ナビ（Today / Study / Tasks / Life）** と Today の5つのカードが出ることを確認してください。
+
+> 環境変数 `LIFEOS_WAKE_TIME` は**廃止**しました（Vercel に残っていても害はありません。消して構いません）。
+> 起床時刻は、Web の **Settings** が唯一の正です。初期値は `06:15` です。
+
+### ③ 拡張を更新する（Mac）
+```sh
+git pull origin main   # マージ前なら: git pull origin claude/upbeat-hopper-0jov1f
+cd extension
+npm run build
+```
+Chrome（Comet）で `chrome://extensions` を開き、Night Guard の更新ボタン（⟳）を押します。
+
+- **TikTok を対象に加えたため、拡張の権限が増えています**（`tiktok.com` へのアクセス）。読み込み直したときに Chrome が「新しい権限」の確認を出したら、**許可**してください。確認が出ないこともあります（フォルダから読み込んだ拡張では出ないのが普通です）。
+- 開いている YouTube などのタブは、再読み込みしてください（PiP の計測用のスクリプトが入るため）。
+- 拡張の設定は、Life OS の Settings から**自動で取り込まれます**（接続を保存した直後と、その後は10分ごと）。拡張の設定画面の「今すぐ同期」で、すぐ取り込めます。拡張の設定画面は、接続設定と、同期した値の**表示だけ**になりました（時刻などは、Web の Settings で変更します）。
+- Life OS に接続していない拡張は、これまでに保存した値（なければ初期値）で動きます。
+
+### ④ Discord のコマンドを登録し直す
+`/decision`（部活の決定事項）と `/tasks`（期限が近い課題の一覧）を足しました。手元で、次を実行してください。
+
+```sh
+cd web
+node --env-file=.env.local scripts/register-discord-commands.mjs
+```
+
+`登録しました：/panel /log /decision /task /tasks /today /week /sleep` のように出れば完了です。
+
+### 動作確認
+- Web の **Settings** で起床予定を変える（朝の、制限のない時間に）→ Today の「今寝れば」と、拡張のブロック画面の「いま眠れば」が、その値で計算される。
+- 制限中（23:15 以降）に Settings を開くと、**Sleep と Night Guard は編集できない**（画面でも API でも拒否される）。
+- TikTok を開く → 23:15 以降はブロック画面になる。
+- ログの入力欄を「決定事項」に切り替えて保存 → Life > 決定事項 に出て、キーワードで探せる。

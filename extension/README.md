@@ -9,11 +9,11 @@ Life OS Phase 1。夜になると YouTube・X・Instagram を段階的に制限�
 | 時刻（初期値） | 動作 |
 |---|---|
 | 22:45 | 「寝る準備」の通知（23:15 を過ぎていたら出さない） |
-| 23:15 | YouTube Shorts・X（x.com / twitter.com）・Instagram を制限 |
-| 23:30 | YouTube 全体（ホーム・検索・チャンネル・動画）も制限 |
+| 23:15（Level 1） | YouTube Shorts・X（x.com / twitter.com）・Instagram・**TikTok** を制限 |
+| 23:30（Level 2） | YouTube 全体（ホーム・検索・チャンネル・動画）も制限 |
 | 06:00 | 自動解除 |
 
-- 時刻はすべて設定画面で変更できます。日付をまたぐ時間帯（23:15〜翌06:00）に対応しています。
+- 時刻などの設定は、**Life OS の Settings**（Web）で変更します。拡張は、それを自動で取り込みます（接続直後と10分ごと。オフラインでは、最後に取得した値で動きます）。拡張の設定画面は、接続設定と、同期した値の表示だけです。日付をまたぐ時間帯（23:15〜翌06:00）に対応しています。
 - 段階が切り替わった瞬間に、**すでに開いているタブも**ブロック画面へ差し替えます。
 - 一時解除は **サイト別**（YouTube / X / Instagram）。YouTube を解除しても X・Instagram は開きません。
 - 一時解除：理由を一言入力 → 待ち時間（初期30秒）→ 解除時間（初期10分）だけ開く。期限が切れたら再び制限します。待ち時間は、**ブロック画面を前面で見ている間だけ**進みます（別のウィンドウ・タブ・アプリへ移ると一時停止し、戻ったら続きから数えます）。
@@ -88,7 +88,7 @@ esbuild なら設定ほぼ不要で一瞬で終わります。テストは vites
 
 ## 権限
 - `storage` / `alarms` / `notifications` / `webNavigation` / `idle`（離席・ロック中を数えないため）
-- `host_permissions`：`youtube.com` / `x.com` / `twitter.com` / `instagram.com`（https のみ）
+- `host_permissions`：`youtube.com` / `x.com` / `twitter.com` / `instagram.com` / `tiktok.com`（https のみ）
 - `optional_host_permissions`：設定画面で連携を保存したとき、その URL だけを許可します（最初から全サイトの権限は持ちません）。
 - `tabs` 権限は不要です（ホスト権限の範囲でタブの URL を扱えます）。
 
