@@ -16,7 +16,7 @@ export default function Login() {
   }
 
   return (
-    <main>
+    <main className="narrow">
       <h1>🌙 Life OS</h1>
       <form onSubmit={submit} className="card" style={{ display: 'grid', gap: 10 }}>
         <input type="email" placeholder="メールアドレス" value={email} onChange={(e) => setEmail(e.target.value)} required />
