@@ -1,43 +1,32 @@
-import { getNow } from './clock';
-import { normalizePlaylistId } from './core/match';
-import { isEditLocked } from './core/settings';
-import { getStage } from './core/stage';
 import type { Settings } from './core/types';
 import { getRemoteStatus, loadRemote, outboxSize, saveRemote } from './storage/remote';
-import { loadSettings, saveSettings } from './storage/settings';
+import { loadSettings } from './storage/settings';
+import { getSyncStatus, syncSettings } from './storage/syncSettings';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const TIME_FIELDS = ['prepareTime', 'softTime', 'hardTime', 'releaseTime', 'wakeTime'] as const;
-const NUM_FIELDS = ['waitSeconds', 'unlockMinutes'] as const;
 
-function fill(s: Settings): void {
-  for (const k of TIME_FIELDS) $<HTMLInputElement>(k).value = s[k];
-  for (const k of NUM_FIELDS) $<HTMLInputElement>(k).value = String(s[k]);
-  $<HTMLTextAreaElement>('playlists').value = s.allowedPlaylists.join('\n');
+/** 同期した設定を表示する（変更は Life OS の Settings で行う） */
+function showSettings(s: Settings): void {
+  const text = (id: string, v: string) => ($(id).textContent = v);
+  text('v-prepareTime', s.prepareTime);
+  text('v-softTime', s.softTime);
+  text('v-hardTime', s.hardTime);
+  text('v-releaseTime', s.releaseTime);
+  text('v-wakeTime', s.wakeTime);
+  text('v-waitSeconds', `${s.waitSeconds} 秒`);
+  text('v-unlockMinutes', `${s.unlockMinutes} 分`);
+  text('v-allowedPlaylists', s.allowedPlaylists.length === 0 ? 'なし' : `${s.allowedPlaylists.length} 件`);
 }
 
-function collect(): Settings {
-  const s = {} as Settings;
-  for (const k of TIME_FIELDS) s[k] = $<HTMLInputElement>(k).value;
-  for (const k of NUM_FIELDS) s[k] = Number($<HTMLInputElement>(k).value);
-  s.allowedPlaylists = $<HTMLTextAreaElement>('playlists')
-    .value.split('\n')
-    .map(normalizePlaylistId)
-    .filter((v) => v !== '');
-  return s;
-}
-
-/** 制限中（soft / hard）は入力欄を無効化して表示のみにする */
-async function refreshLock(): Promise<void> {
-  const locked = isEditLocked(getStage(await loadSettings(), await getNow()));
-  document
-    .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>(
-      'main input:not(.dev):not([data-always]), main textarea, #save',
-    )
-    .forEach((el) => {
-      el.disabled = locked;
-    });
-  $('lockBanner').hidden = !locked;
+async function showSyncStatus(): Promise<void> {
+  const [remote, status] = await Promise.all([loadRemote(), getSyncStatus()]);
+  const connected = remote.apiUrl !== '' && remote.apiToken !== '';
+  const parts: string[] = [];
+  if (!connected) parts.push('Life OS に未接続です（この拡張に保存されている値で動いています）');
+  else if (status.lastSyncedAt) parts.push(`最後に同期：${new Date(status.lastSyncedAt).toLocaleString('ja-JP')}`);
+  else parts.push('まだ同期していません');
+  $('syncStatus').textContent = parts.join(' ／ ');
+  $('syncError').textContent = connected && status.lastError ? `直近の同期のエラー：${status.lastError}（最後に取得した値で動いています）` : '';
 }
 
 async function showRemoteStatus(): Promise<void> {
@@ -48,13 +37,26 @@ async function showRemoteStatus(): Promise<void> {
   $('remoteStatus').textContent = parts.join(' ／ ');
 }
 
+async function refresh(): Promise<void> {
+  showSettings(await loadSettings());
+  await Promise.all([showSyncStatus(), showRemoteStatus()]);
+}
+
 async function init(): Promise<void> {
-  fill(await loadSettings());
   const remote = await loadRemote();
   $<HTMLInputElement>('apiUrl').value = remote.apiUrl;
   $<HTMLInputElement>('apiToken').value = remote.apiToken;
-  void showRemoteStatus();
-  setInterval(() => void showRemoteStatus(), 5000);
+  await refresh();
+  setInterval(() => void refresh(), 5000);
+
+  $('syncNow').addEventListener('click', async () => {
+    $('syncOk').textContent = '';
+    await syncSettings(true);
+    await refresh();
+    const st = await getSyncStatus();
+    $('syncOk').textContent = st.lastError ? '' : '同期しました';
+  });
+
   $('saveRemote').addEventListener('click', async () => {
     $('remoteError').textContent = '';
     $('remoteOk').textContent = '';
@@ -63,23 +65,10 @@ async function init(): Promise<void> {
       const saved = await loadRemote();
       $<HTMLInputElement>('apiUrl').value = saved.apiUrl;
       $('remoteOk').textContent = '保存しました';
-      void showRemoteStatus();
+      await syncSettings(true); // 接続できたら、すぐ設定を取り込む
+      await refresh();
     } catch (e) {
       $('remoteError').textContent = e instanceof Error ? e.message : String(e);
-    }
-  });
-  await refreshLock();
-  setInterval(() => void refreshLock(), 3000);
-
-  $('save').addEventListener('click', async () => {
-    $('error').textContent = '';
-    $('ok').textContent = '';
-    try {
-      await saveSettings(collect());
-      fill(await loadSettings());
-      $('ok').textContent = '保存しました';
-    } catch (e) {
-      $('error').textContent = e instanceof Error ? e.message : String(e);
     }
   });
 

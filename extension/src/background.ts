@@ -9,6 +9,7 @@ import { recordBlocked } from './storage/eventLog';
 import { flushOutbox } from './storage/remote';
 import { IDLE_SECONDS, syncTracking } from './tracker';
 import { loadSettings } from './storage/settings';
+import { syncSettings } from './storage/syncSettings';
 import { getUnlocks } from './storage/unlock';
 
 // 制限するかどうかは常に「現在時刻」から判定する。
@@ -26,6 +27,8 @@ const SITE_FILTER: chrome.events.UrlFilter[] = [
   { hostSuffix: '.twitter.com' },
   { hostEquals: 'instagram.com' },
   { hostSuffix: '.instagram.com' },
+  { hostEquals: 'tiktok.com' },
+  { hostSuffix: '.tiktok.com' },
 ];
 
 /** 1つのタブを現在時刻で判定し、制限対象ならブロック画面に差し替える */
@@ -95,6 +98,7 @@ async function scheduleAlarms(): Promise<void> {
 
 /** アラーム・起動・設定変更のどれから呼ばれても同じ結果になる */
 async function sweep(): Promise<void> {
+  await syncSettings().catch(() => undefined); // Life OS の Settings を、10分に1回まで取り込む（オフラインなら手元の値のまま）
   await syncTracking().catch(() => undefined);
   await flushOutbox().catch(() => undefined);
   await maybeNotify();
@@ -137,6 +141,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   // 解除などの記録が積まれたら、ページが閉じる前に切り離してすぐ送る（利用時間は1分ごとの同期でまとめて送る）
   const queued = changes.outbox?.newValue as Array<{ payload: { type?: string } }> | undefined;
   if (area === 'local' && queued?.some((i) => i.payload.type !== 'usage')) void flushOutbox().catch(() => undefined);
+  if (area === 'local' && changes.remote) void syncSettings(true).catch(() => undefined); // 接続を保存したら、すぐ取り込む
   if (area === 'local' && (changes.settings || changes.unlocks || isClockChange(changes))) {
     void scheduleAlarms();
   }

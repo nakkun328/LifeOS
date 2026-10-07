@@ -25,30 +25,28 @@
 <body>
   <main>
     <h1>🌙 Night Guard 設定</h1>
-    <div class="banner" id="lockBanner" hidden>
-      制限中のため、設定は表示のみです。朝の自動解除のあとに変更できます。
+    <div class="banner">
+      Night Guard の時刻や待ち時間は、<strong>Life OS の Settings</strong> で変更します（ここは表示だけです）。
+      変更すると、この拡張に自動で反映されます。
     </div>
 
-    <h2>時刻</h2>
-    <div class="row"><label for="prepareTime">寝る準備の通知</label><input id="prepareTime" type="time" /></div>
-    <div class="row"><label for="softTime">Shorts・X・Instagram を制限</label><input id="softTime" type="time" /></div>
-    <div class="row"><label for="hardTime">YouTube 全体を制限</label><input id="hardTime" type="time" /></div>
-    <div class="row"><label for="releaseTime">自動解除</label><input id="releaseTime" type="time" /></div>
-    <div class="row"><label for="wakeTime">起床時刻<small>ブロック画面の睡眠時間の計算に使います</small></label><input id="wakeTime" type="time" /></div>
-
-    <h2>一時解除</h2>
-    <div class="row"><label for="waitSeconds">待ち時間（秒）</label><input id="waitSeconds" type="number" min="0" max="600" /></div>
-    <div class="row"><label for="unlockMinutes">解除時間（分）</label><input id="unlockMinutes" type="number" min="1" max="180" /></div>
-
-    <h2>許可する YouTube 再生リスト（BGM 用）</h2>
-    <label for="playlists" style="font-size:13px;color:var(--muted)">1行に1つ。再生リストの URL か ID（URL の list= の値）</label>
-    <textarea id="playlists" spellcheck="false" placeholder="https://www.youtube.com/playlist?list=PL..."></textarea>
-
+    <h2>いま使っている設定</h2>
+    <div id="synced">
+      <div class="row"><span>寝る準備の通知</span><span id="v-prepareTime"></span></div>
+      <div class="row"><span>Level 1（Shorts・X・Instagram・TikTok）</span><span id="v-softTime"></span></div>
+      <div class="row"><span>Level 2（YouTube 全体も）</span><span id="v-hardTime"></span></div>
+      <div class="row"><span>自動解除</span><span id="v-releaseTime"></span></div>
+      <div class="row"><span>起床予定<small>ブロック画面の「今寝れば」に使います</small></span><span id="v-wakeTime"></span></div>
+      <div class="row"><span>待ち時間</span><span id="v-waitSeconds"></span></div>
+      <div class="row"><span>解除時間</span><span id="v-unlockMinutes"></span></div>
+      <div class="row"><span>許可する再生リスト</span><span id="v-allowedPlaylists"></span></div>
+    </div>
     <div class="save">
-      <button class="primary" id="save">保存</button>
-      <span class="ok" id="ok"></span>
+      <button id="syncNow">今すぐ同期</button>
+      <span class="ok" id="syncOk"></span>
     </div>
-    <div class="error" id="error"></div>
+    <div class="muted" style="font-size:13px" id="syncStatus"></div>
+    <div class="error" id="syncError"></div>
 
     <h2>Life OS との連携</h2>
     <p class="muted" style="font-size:13px;margin:0 0 8px">

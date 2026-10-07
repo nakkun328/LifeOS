@@ -9,7 +9,7 @@ import { enqueueBed, isConfigured, loadRemote } from './storage/remote';
 import { loadSettings } from './storage/settings';
 import { getUnlocks, setUnlock } from './storage/unlock';
 
-const SITE_NAMES: Record<Site, string> = { youtube: 'YouTube', x: 'X', instagram: 'Instagram' };
+const SITE_NAMES: Record<Site, string> = { youtube: 'YouTube', x: 'X', instagram: 'Instagram', tiktok: 'TikTok' };
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const params = new URLSearchParams(location.search);

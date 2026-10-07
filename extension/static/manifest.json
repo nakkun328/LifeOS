@@ -9,12 +9,13 @@
     "https://*.youtube.com/*",
     "https://*.x.com/*",
     "https://*.twitter.com/*",
-    "https://*.instagram.com/*"
+    "https://*.instagram.com/*",
+    "https://*.tiktok.com/*"
   ],
   "optional_host_permissions": ["https://*/*", "http://localhost/*"],
   "content_scripts": [
     {
-      "matches": ["https://*.youtube.com/*", "https://*.x.com/*", "https://*.twitter.com/*", "https://*.instagram.com/*"],
+      "matches": ["https://*.youtube.com/*", "https://*.x.com/*", "https://*.twitter.com/*", "https://*.instagram.com/*", "https://*.tiktok.com/*"],
       "js": ["pip.js"],
       "run_at": "document_idle"
     }

@@ -15,6 +15,7 @@ describe('classifyUsage', () => {
     ['https://x.com/home', 'x'],
     ['https://twitter.com/a', 'x'],
     ['https://www.instagram.com/', 'instagram'],
+    ['https://www.tiktok.com/@a/video/1', 'tiktok'],
   ] as const)('%s → %s', (url, expected) => expect(classifyUsage(url, allowed)).toBe(expected));
 
   it('対象外は null', () => {
