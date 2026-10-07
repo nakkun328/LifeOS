@@ -44,7 +44,7 @@ export function InsightsPage() {
         <div className="cards">
           <section className="card span-all">
             <h2>今週と先週</h2>
-            {v.week.headline && <div className="lead">{v.week.headline}</div>}
+            {v.week.headline && <div style={{ fontWeight: 600, margin: '4px 0 8px' }}>{v.week.headline}</div>}
             <SectionBody s={v.week} />
             <div className="sub">先週の「同じ時点まで」と比べています。</div>
           </section>

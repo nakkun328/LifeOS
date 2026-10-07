@@ -40,11 +40,13 @@ export function JournalPage() {
         <section className="card span-all">
           <div className="row">
             <button onClick={() => j && go(j.prev)} disabled={!j} aria-label="前の日">‹ 前の日</button>
-            <h2 className="grow" style={{ textAlign: 'center', margin: 0 }}>
-              {j ? label(j.date) : '…'}
-              {j?.inProgress && <span className="badge">今日</span>}
-              {j?.edited && <span className="badge">編集済み</span>}
-            </h2>
+            <div className="grow" style={{ textAlign: 'center' }}>
+              <h2 style={{ margin: 0 }}>{j ? label(j.date) : '…'}</h2>
+              <div style={{ minHeight: 22 }}>
+                {j?.inProgress && <span className="badge">今日</span>}
+                {j?.edited && <span className="badge">編集済み</span>}
+              </div>
+            </div>
             <button onClick={() => j?.next && go(j.next)} disabled={!j?.next} aria-label="次の日">次の日 ›</button>
           </div>
           <div className="err">{error}</div>

@@ -19,6 +19,7 @@ Life OS で、人の手で行う作業（アカウント作成・環境変数・
 - `0001_init.sql`（Phase 2）
 - `0002_tasks_logs.sql`（Phase 3）
 - `0003_os_shape.sql`（Phase 5.5。手順は下の「Phase 5.5」）
+- `0004_wishlist.sql`・`0005_english_words.sql`・`0006_journal.sql`（Phase 6。手順は下の「Phase 6」）
 
 > Supabase CLI を使う場合は `supabase link` のあと `supabase db push` でも同じです。
 
@@ -182,3 +183,48 @@ node --env-file=.env.local scripts/register-discord-commands.mjs
 - 制限中（23:15 以降）に Settings を開くと、**Sleep と Night Guard は編集できない**（画面でも API でも拒否される）。
 - TikTok を開く → 23:15 以降はブロック画面になる。
 - ログの入力欄を「決定事項」に切り替えて保存 → Life > 決定事項 に出て、キーワードで探せる。
+
+---
+
+## Phase 6：残りの機能（Wishlist・English Words・Journal・Insights）
+
+**順番が大事です。先に ① データベース、そのあと ② 公開（マージ）、③ Discord の順に進めてください。**
+データベースを更新する前に新しい Web を公開すると、Today が「テーブルがありません」で開けなくなります（Today が英単語のテーブルを読むため）。
+拡張（Night Guard）は**変更していません**。再ビルドも再読み込みも要りません。
+
+### ① データベースを更新する（Supabase）
+**まだ `0003` を流していなければ、先に `0003` を流してください**（Phase 5.5 の手順）。そのあと、次の3つを**この順に**流します。
+既存のデータは、そのまま残ります（どれも、新しいテーブルを**足すだけ**です。既存のテーブル・列・行には触れません）。
+
+1. Supabase の **SQL Editor** → **New query** を開く。
+2. `supabase/migrations/0004_wishlist.sql` の中身を貼り付けて **Run** → **Success. No rows returned**。
+3. 同じようにして `0005_english_words.sql` を **Run**。
+4. 同じようにして `0006_journal.sql` を **Run**。
+   - ターミナルから `pbcopy < supabase/migrations/0004_wishlist.sql` のようにコピーすると楽です。
+5. 確認：**Table Editor** に `wishlist_items`、`word_tests`、`english_words`、`word_reviews`、`journal_entries` の5つが増えている。どれも **RLS が有効**（Table Editor の上部に "RLS enabled"）。
+
+> 途中でエラーになったとき：どのファイルまで流したかを確認して、続きから流してください。`create table` のエラー（already exists）が出たファイルは、すでに流してあります。
+
+### ② Web を公開する
+`claude/upbeat-hopper-0jov1f` ブランチを `main` にマージすると、Vercel が自動で公開します（1〜2分）。
+公開後、次を確認してください。
+- 下部ナビが **Today / Study / Tasks / Life / Insights** の5つになっている。
+- Today に「英単語」と「Insights」のカードがある。
+- Life に「日記」と「Wishlist」、Study に「英単語」の入口がある。
+
+### ③ Discord のコマンドを登録し直す
+`/words`（今日の復習とテストまでの日数）と `/journal`（今日の日記）を足しました。手元で、次を実行してください。
+
+```sh
+cd web
+node --env-file=.env.local scripts/register-discord-commands.mjs
+```
+
+`登録しました：…/words /journal` のように出れば完了です。
+
+### 動作確認
+- Life > Wishlist：名前だけを入れて追加 →「購入済み」を1タップ → 下の「購入済み」に移る。
+- Study > 英単語：「まとめて貼り付ける」に、1行ずつ `apple, りんご` の形で貼る → 登録 → Today に「今日の復習 N語」が出る →「復習する」で、単語 → タップで意味 →「覚えてた」「忘れてた」。
+- Life > 日記：勉強やログのある日は、文章が自動で出る。「編集」で直して保存 → 「編集済み」になり、あとからデータが増えても書き換わらない。「自動の文章に戻す」で作り直せる。
+- Insights：データが少ないうちは「あと◯件たまると表示されます」が並ぶ。勉強の終了時に効率（1〜5）を入れると、時間帯・長さごとの集計に使われる。
+- Discord：`/words`、`/journal`。
