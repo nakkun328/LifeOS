@@ -54,3 +54,12 @@ export function formatMinutes(totalMinutes: number): string {
   const h = Math.floor(m / 60);
   return h > 0 ? `${h}時間${m % 60}分` : `${m}分`;
 }
+
+/** 時間の増減を数字だけで出す。例：+1時間12分、−30分、±0分（評価の言葉は付けない） */
+export function formatDurationDelta(seconds: number): string {
+  const m = Math.round(Math.abs(seconds) / 60);
+  if (m === 0) return '±0分';
+  const h = Math.floor(m / 60);
+  const body = h > 0 ? `${h}時間${m % 60}分` : `${m}分`;
+  return `${seconds < 0 ? '−' : '+'}${body}`;
+}
