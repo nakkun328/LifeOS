@@ -113,3 +113,13 @@ export type JournalRow = {
   updated_at: string;
   created_at: string;
 };
+
+export type MotivationRow = {
+  id: string;
+  record_date: string;
+  /** 項目ごとの点数（1〜10）。記録していない項目はキーごと無い */
+  scores: Record<string, number>;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+};

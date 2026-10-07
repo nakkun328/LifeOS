@@ -7,6 +7,9 @@ import type { TodayView } from '@/server/handlers/today';
 import { AppShell } from './AppShell';
 import { Card } from './Card';
 
+const todayMotiv = (v: TodayView | null): string =>
+  !v ? '開発・趣味のモチベを記録' : v.motivation ? `今日は記録済み（${Object.keys(v.motivation.scores).length}項目）` : '今日のモチベを記録';
+
 /** Life：Sleep・Digital・ログ・決定事項への入口 */
 export function LifePage() {
   const { data: v, error } = useApi<TodayView>('/api/today', 60_000);
@@ -33,6 +36,9 @@ export function LifePage() {
         </Card>
         <Card href="/life/decisions" title="決定事項（部活）">
           <div className="sub">{decisions && decisions[0] ? `最新：${decisions[0].title ? `${decisions[0].title} ／ ` : ''}${decisions[0].body}` : 'キーワードで探せます'}</div>
+        </Card>
+        <Card href="/life/motivation" title="Motivation">
+          <div className="sub">{todayMotiv(v)}</div>
         </Card>
         <Card href="/life/journal" title="日記">
           <div className="sub">その日のデータから自動で。手で直せます</div>

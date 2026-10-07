@@ -20,6 +20,7 @@ Life OS で、人の手で行う作業（アカウント作成・環境変数・
 - `0002_tasks_logs.sql`（Phase 3）
 - `0003_os_shape.sql`（Phase 5.5。手順は下の「Phase 5.5」）
 - `0004_wishlist.sql`・`0005_english_words.sql`・`0006_journal.sql`（Phase 6。手順は下の「Phase 6」）
+- `0007_motivation.sql`（Phase 7。手順は下の「Phase 7」）
 
 > Supabase CLI を使う場合は `supabase link` のあと `supabase db push` でも同じです。
 
@@ -228,3 +229,100 @@ node --env-file=.env.local scripts/register-discord-commands.mjs
 - Life > 日記：勉強やログのある日は、文章が自動で出る。「編集」で直して保存 → 「編集済み」になり、あとからデータが増えても書き換わらない。「自動の文章に戻す」で作り直せる。
 - Insights：データが少ないうちは「あと◯件たまると表示されます」が並ぶ。勉強の終了時に効率（1〜5）を入れると、時間帯・長さごとの集計に使われる。
 - Discord：`/words`、`/journal`。
+
+---
+
+## Phase 7：Motivation（旧「Motivation Monitor」の統合）
+
+**順番が大事です。① データベース → ② 環境変数と通知 → ③ 公開（マージ）→ ④ Discord のコマンド → ⑤ 旧データの取り込み → ⑥ 旧アプリの通知を止める。**
+データベースを更新する前に新しい Web を公開すると、Today が「テーブルがありません」で開けなくなります。
+拡張（Night Guard）は変更していません。再ビルドも再読み込みも要りません。
+
+### ① データベースを更新する（Supabase）
+既存のデータは、そのまま残ります（`0007` は、新しいテーブルを**足すだけ**です）。`0006` までを流してあることを確認してから進めてください。
+
+1. Supabase の **SQL Editor** → **New query**。
+2. `supabase/migrations/0007_motivation.sql` の中身を貼り付けて **Run** → **Success. No rows returned**。
+3. 確認：**Table Editor** に `motivation_records` が増えている（RLS が有効）。
+
+### ② 通知の準備（環境変数）
+朝8時と夜21時の通知は、Discord の **Webhook** に送ります。
+
+1. Discord で、通知を受け取りたいチャンネルの **チャンネルの編集（⚙）→ 連携サービス → ウェブフック → 新しいウェブフック** を作り、**ウェブフックURLをコピー**。（旧アプリで使っていた Webhook の URL と同じものを使っても構いません。）
+2. Vercel の **Settings → Environment Variables** に、次の2つを追加（**Production** に）。
+   - `DISCORD_WEBHOOK_URL`：コピーした URL（`https://discord.com/api/webhooks/…`）。**秘密です。Git やチャットに貼らないでください。**
+   - `CRON_SECRET`：16文字以上のランダムな文字列（例：ターミナルで `openssl rand -hex 24`）。Vercel の Cron が、これを自動で付けて通知の API を呼びます。
+3. **Production を再デプロイ**（環境変数を足しただけでは反映されません。Preview ではなく Production です）。
+
+### ③ Web を公開する
+`claude/upbeat-hopper-0jov1f` ブランチを `main` にマージすると、Vercel が自動で公開します。同時に、`web/vercel.json` の **Cron**（2本）が有効になります。
+
+| 通知 | 日本時間 | `vercel.json` の schedule（UTC） | 呼ぶ API |
+|---|---|---|---|
+| 朝のまとめ | 毎朝 8:00 | `0 23 * * *` | `/api/cron/motivation-morning` |
+| 夜の催促 | 毎晩 21:00 | `0 12 * * *` | `/api/cron/motivation-evening` |
+
+- **Hobby（無料）プランの制限**：Cron は **1日1回まで**で、指定した時刻の「1時間のどこか」で動きます（8:00〜8:59、21:00〜21:59 のように、ぴったりにはなりません）。この用途には足ります。制限は変わることがあるので、Vercel の **Settings → Cron Jobs** で、2本が登録されているか確認してください。
+- 動作確認（手元のターミナル。`<URL>` は公開した Web の URL）：
+  ```sh
+  curl -H "Authorization: Bearer <CRON_SECRET の値>" https://<URL>/api/cron/motivation-morning
+  ```
+  Discord のチャンネルに、昨日のまとめ（または「記録がなかったよ」）が届けば成功です。夜の API は、**今日の記録が済んでいると何も送りません**（`{"sent":false}` が返ります）。
+- **ぴったりの時刻に送りたいとき／Cron が使えないとき**（代替案）：`web/vercel.json` の `crons` を空（`"crons": []`）にして、外部のスケジューラから同じ API を呼びます。呼び方は同じで、ヘッダーの値は `CRON_SECRET` か `LIFEOS_API_TOKEN` のどちらでも通ります。
+  - 例：**cron-job.org**（無料）で、GET `https://<URL>/api/cron/motivation-morning` を毎日 8:00（タイムゾーンを Asia/Tokyo に）、`…/motivation-evening` を 21:00 に設定し、「Request headers」に `Authorization: Bearer <値>` を足す。
+  - 例：GitHub Actions の `schedule`（cron は UTC。遅れることがあります）から `curl` で呼ぶ。トークンは GitHub の Secrets に入れる。
+  - Cron と外部スケジューラを**両方**有効にすると、通知が二重に届きます。どちらか一方にしてください。
+
+### ④ Discord のコマンドを登録し直す
+`/motiv <項目> <点数>` を足しました。手元で、次を実行してください。
+
+```sh
+cd web
+node --env-file=.env.local scripts/register-discord-commands.mjs
+```
+
+`登録しました：…/motiv` のように出れば完了です。`/motiv` は、今日の記録の**その項目だけ**を更新します（ほかの項目とメモは消えません）。
+
+### ⑤ 旧アプリのデータを取り込む
+旧アプリのデータは2か所にあります。**どちらか一方でも、両方でも構いません**（同じ日付は項目ごとにマージされ、何度取り込んでも重複しません）。
+
+**方法 A：ブラウザの localStorage から**（旧アプリをブラウザで使っていたとき）
+1. 旧アプリを、いつも使っていた**同じ URL**でブラウザに開く（localStorage は URL ごとに別なので、別の URL では空になります）。
+2. 開発者ツールのコンソールを開く（Mac は `Cmd + Option + J`、Chrome / Comet）。
+3. 次を貼り付けて Enter：
+   ```js
+   copy(localStorage.getItem('motivation_monitor_v2'))
+   ```
+   これで JSON がクリップボードにコピーされます（`undefined` と出たら、その URL にはデータがありません）。
+
+**方法 B：旧サーバー（motivation.db）の API から**
+1. 旧アプリのサーバーが動いている状態で、ターミナルから（`<ホスト:ポート>` は旧アプリを開いている URL。例：`localhost:5000`）：
+   ```sh
+   curl -s http://<ホスト:ポート>/api/motivation > motivation.json
+   pbcopy < motivation.json
+   ```
+   `motivation.json` は、中身を確認したいときのために残しておけます（Git には入れないでください）。
+
+**取り込む**
+1. Life OS の **Settings** を開き、いちばん下の **「Motivation の取り込み」** に、コピーした JSON を貼り付けて **確認する**。
+2. 件数・期間・「すでにある日付」・不正な行（理由つき）が出ます。不正な行（日付が `YYYY-MM-DD` でない、未知の項目、1〜10 以外の点数など）は**取り込まれません**。
+3. 同じ日付で、同じ項目が両方にあって値が違うときだけ、「Life OS の値を残す／旧アプリの値を使う」を選べます。
+4. **取り込む** を押す。結果（新しい日付・更新・変更なし）が出ます。
+
+> **日付について**：旧アプリは日付を UTC で作っていたため、**日本時間の朝9時前（0:00〜8:59）に記録した分は、1日前の日付で入っています**。Life OS は取り込み時に日付を直しません（旧データには記録した時刻がなく、どれが朝の記録か分からないため）。気になる日があれば、旧データの JSON の `date` を手で直してから取り込んでください。
+
+### ⑥ 旧アプリの通知を止める（取り込みのあと）
+Life OS が同じ時刻に通知を送るので、旧アプリの通知を止めないと**二重に届きます**。取り込みの結果を確認してから止めてください。
+
+- 旧アプリを `python app.py`（など）を起動したターミナルで動かしているなら、そのターミナルで `Ctrl + C`。
+- 自動起動している場合（Mac）：`launchctl list | grep -i motiv` で名前を調べ、`launchctl unload ~/Library/LaunchAgents/<名前>.plist`。
+- cron で通知を出している場合：`crontab -e` で、旧アプリの行の先頭に `#` を付けて保存。
+- サーバーに置いているなら、そのサービス（systemd など）を停止して、自動起動を無効にする。
+- 旧アプリの `motivation.db` は、**消さずに残して**おいてください（取り込み直せます）。
+
+### 動作確認
+- Today に **Motivation** のカード（未記録なら「今日のモチベを記録」）。カードをタップ → スライダーの画面。
+- 6項目を付けて **記録する** → もう一度開くと、今日の値が最初から入っている。付け直して記録すると上書きされる。
+- Discord の `/motiv` で1項目だけ記録 → Web を開くと、ほかの項目はそのまま。
+- Life > Motivation の **グラフ**（7日 / 30日 / 全期間）と **履歴**。
+- 日記に「モチベーションは …」の1行。Insights に、記録が10日分以上たまると、睡眠・Digital・曜日との関係が出る。

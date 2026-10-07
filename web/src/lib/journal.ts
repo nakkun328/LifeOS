@@ -1,6 +1,7 @@
 // 日記の自動生成（純粋関数）。外部の AI は使わず、その日のデータをテンプレートで文にする。
 // データがない項目の文は出さない。「日記」タグのログは、自由メモとしてそのまま本文に入れる。
 import { formatMinutes } from './messages';
+import { MOTIV_ITEMS, type MotivRecord } from './motivation';
 import type { LogTag } from './types';
 
 export type JournalInput = {
@@ -13,6 +14,8 @@ export type JournalInput = {
   digital: { minutes: number; diffMinutes: number | null } | null;
   /** 就寝（その日の夜）。比べる前日の夜があれば bedDiffMinutes（負なら早い） */
   sleep: { bed: string; bedDiffMinutes: number | null; durationMin: number | null } | null;
+  /** その日のモチベ。未記録なら null / 省略 */
+  motivation?: Pick<MotivRecord, 'scores' | 'comment'> | null;
   logs: Array<{ tag: LogTag; body: string }>;
   decisions: Array<{ title: string | null; body: string }>;
 };
@@ -59,6 +62,14 @@ function sleepSentences(s: JournalInput['sleep']): string[] {
   return out;
 }
 
+/** その日のモチベを1行で。記録した項目だけ（欠けは欠けのまま） */
+function motivationSentence(m: JournalInput['motivation']): string | null {
+  if (!m) return null;
+  const parts = MOTIV_ITEMS.filter((i) => m.scores[i.key] !== undefined).map((i) => `${i.label}${m.scores[i.key]}`);
+  if (parts.length === 0) return null;
+  return `モチベーションは ${parts.join('・')} だった${m.comment ? `（一言：${m.comment.replace(/[。.!！?？]$/, '')}）` : ''}。`;
+}
+
 export function composeJournal(input: JournalInput): { body: string; hasData: boolean } {
   const lines: string[] = [];
   const push = (s: string | null) => s && lines.push(s);
@@ -68,6 +79,7 @@ export function composeJournal(input: JournalInput): { body: string; hasData: bo
   push(tasksSentence(input.tasksDone));
   push(digitalSentence(input.digital, input.inProgress));
   for (const s of sleepSentences(input.sleep)) lines.push(s);
+  push(motivationSentence(input.motivation));
   for (const l of input.logs.filter((x) => x.tag !== '日記')) lines.push(stop(`${l.tag}：${l.body}`));
   for (const d of input.decisions) lines.push(stop(`部活の決定事項：${d.title ? `（${d.title}）` : ''}${d.body}`));
   // 「日記」タグは、自由メモ。そのまま（加工せずに）入れる

@@ -64,6 +64,11 @@ export function InsightsPage() {
             <h2>就寝と、翌日の勉強</h2>
             <SectionBody s={v.sleep.bedNextDay} />
           </section>
+          <section className="card span-all">
+            <h2>モチベ（睡眠・Digital・曜日）</h2>
+            <SectionBody s={v.motivation} />
+            <div className="sub">モチベは、記録した項目の平均（1〜10）で見ています（もとにした日数：{v.counts.motivationDays}日）。</div>
+          </section>
           <p className="sub span-all">
             直近6週間のデータから出しています（勉強の効率は90日）。ここに出るのは「そういう傾向がある」という目安で、原因を示すものではありません。
             効率は、勉強を終えるときに入れた 1〜5 の値です。

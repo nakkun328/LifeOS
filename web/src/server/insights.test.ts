@@ -30,8 +30,8 @@ describe('Insights：集計の入口', () => {
     const ctx = makeTestCtx('2026-10-07T12:00:00');
     const v = await buildInsightsView(ctx);
     expect(v.top).toBeNull();
-    expect(v.counts).toEqual({ efficiencySessions: 0, studyDays: 0, digitalDays: 0, nights: 0 });
-    for (const s of [v.week, v.study.band, v.study.length, v.sleep.digitalBed, v.sleep.bedNextDay]) {
+    expect(v.counts).toEqual({ efficiencySessions: 0, studyDays: 0, digitalDays: 0, nights: 0, motivationDays: 0 });
+    for (const s of [v.week, v.study.band, v.study.length, v.sleep.digitalBed, v.sleep.bedNextDay, v.motivation]) {
       expect(s.lines).toEqual([]);
       expect(s.pending.length).toBeGreaterThan(0);
     }
@@ -42,7 +42,7 @@ describe('Insights：集計の入口', () => {
     const ctx = makeTestCtx('2026-10-07T12:00:00');
     seed(ctx);
     const v = await buildInsightsView(ctx);
-    expect(v.counts).toEqual({ efficiencySessions: 17, studyDays: 17, digitalDays: 17, nights: 17 });
+    expect(v.counts).toEqual({ efficiencySessions: 17, studyDays: 17, digitalDays: 17, nights: 17, motivationDays: 0 });
 
     // 勉強：19時台（効率5）が15時台（効率2）より高い
     expect(v.study.band.lines[0]!.text).toContain('数学は19〜21時の平均効率が最も高い傾向があります');
@@ -53,6 +53,23 @@ describe('Insights：集計の入口', () => {
     expect(v.week.lines.map((l) => l.key)).toEqual(expect.arrayContaining(['week-study', 'week-digital', 'week-bed', 'week-sleep']));
     expect(v.week.headline).toMatch(/^今週は先週より Study .*Digital /);
     expect(v.top).not.toBeNull();
+  });
+
+  it('モチベの記録があれば、睡眠・Digital・曜日との関係が出る。未記録の日は数えない', async () => {
+    const ctx = makeTestCtx('2026-10-07T12:00:00');
+    seed(ctx);
+    // 就寝が遅くなる（睡眠が短くなる）ほど、モチベが下がる。4日に1日は未記録
+    ctx.db.tables.motivation_records = [];
+    for (let i = 0; i < 17; i += 1) {
+      if (i % 4 === 3) continue;
+      ctx.db.tables.motivation_records.push({ id: `m${i}`, record_date: addDays('2026-09-20', i), scores: { phys: 9 - Math.floor(i / 4), photo: 9 - Math.floor(i / 4) - 1 }, comment: null });
+    }
+    const v = await buildInsightsView(ctx);
+    expect(v.counts.motivationDays).toBe(13);
+    expect(v.motivation.lines.map((l) => l.key)).toContain('motivation-digital');
+    expect(v.motivation.lines.find((l) => l.key === 'motivation-digital')!.text).toContain('Digital が短い日のほうが高い傾向があります（13日分）');
+    // 睡眠は「前の夜」と組にするので、記録のある日のうち、前の日に睡眠がある日だけ（初日を除く）
+    expect(v.motivation.lines.find((l) => l.key === 'motivation-sleep')!.n).toBe(12);
   });
 
   it('短すぎるセッション（5分未満）は、効率の集計に入れない', async () => {

@@ -8,6 +8,7 @@ import type { InsightsView } from '@/server/handlers/insights';
 import type { TodayView } from '@/server/handlers/today';
 import Link from 'next/link';
 import { AppShell, SettingsLink } from './AppShell';
+import { avgScore, MOTIV_ITEMS } from '@/lib/motivation';
 import { Card } from './Card';
 import { LogInput } from './LogInput';
 import { StudyTimer } from './StudyTimer';
@@ -39,6 +40,7 @@ export function Today() {
         <SleepCard view={view} act={act} />
         <StudyCard view={view} act={act} />
         <TasksCard view={view} act={act} />
+        <MotivationCard view={view} />
         <WordsCard view={view} />
         <DigitalCard view={view} />
         <InsightCard />
@@ -189,6 +191,32 @@ function InsightCard() {
           データがたまると、ここに傾向が出ます。
           {v.nearest && `（${v.nearest.label}：あと${v.nearest.remaining}${v.nearest.unit}）`}
         </div>
+      )}
+    </Card>
+  );
+}
+
+/** 未記録なら記録への入口、記録済みなら今日の点数。カードのタップ1回で、スライダーの画面に着く */
+function MotivationCard({ view }: { view: TodayView }) {
+  const m = view.motivation;
+  const avg = m ? avgScore(m.scores) : null;
+  return (
+    <Card href="/life/motivation" title="Motivation">
+      {!m ? (
+        <>
+          <div className="lead">今日のモチベを記録</div>
+          <div style={{ marginTop: 10 }}><Link href="/life/motivation" className="btn primary">記録する</Link></div>
+        </>
+      ) : (
+        <>
+          {avg !== null && <div className="lead">平均 {(Math.round(avg * 10) / 10).toFixed(1)}</div>}
+          <div className="chips">
+            {MOTIV_ITEMS.filter((i) => m.scores[i.key] !== undefined).map((i) => (
+              <span key={i.key} className="chip" style={{ borderColor: i.color }}><span aria-hidden style={{ color: i.color }}>●</span> {i.label} {m.scores[i.key]}</span>
+            ))}
+          </div>
+          {m.comment && <div className="sub">{m.comment}</div>}
+        </>
       )}
     </Card>
   );

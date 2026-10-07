@@ -7,6 +7,7 @@ import { serviceLabel } from '@/lib/labels';
 import { useApi, type Act } from '@/lib/useApi';
 import type { SettingsView } from '@/server/handlers/settings';
 import { AppShell } from './AppShell';
+import { MotivationImport } from './MotivationImport';
 import { SubjectManager } from './SubjectManager';
 
 const lines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
@@ -31,6 +32,7 @@ export function SettingsPage() {
           <h2>Study：科目</h2>
           <SubjectManager />
         </section>
+        <MotivationImport />
       </div>
     </AppShell>
   );

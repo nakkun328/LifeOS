@@ -1,7 +1,7 @@
 // Insights の集計（すべて純粋関数）。たまったデータを横断して、傾向を文にする。
 // 方針：件数が少ないうちは結論を出さず「あと◯件」を返す。相関を因果として言い切らない（「〜の傾向があります」）。
 // 比べる相手は過去の自分。評価の言葉（良い・悪い・サボり…）は使わない。
-import { addDays, formatBedMinutes, weekStartKey } from './jst';
+import { addDays, dayOfWeek, formatBedMinutes, weekStartKey } from './jst';
 import { formatDurationDelta, formatMinutes } from './messages';
 
 /** 結論を出すのに必要な最低件数。DECISIONS.md にも同じ値を記録している */
@@ -18,7 +18,13 @@ export const MIN = {
   pairs: 10,
   /** 翌日の勉強の効率を出すのに、半分ごとに必要な効率つきセッション数 */
   nextDayEfficiency: 5,
+  /** 曜日とモチベ：1つの曜日に必要な記録日数 */
+  weekdayRecords: 3,
+  /** 曜日とモチベ：比べるのに必要な（件数を満たした）曜日の数 */
+  weekdays: 2,
 };
+/** モチベ（1〜10 の平均）の差が、これ未満なら「ほとんど差はない」とする */
+export const MIN_MOTIVATION_GAP = 0.5;
 /** 平均効率（1〜5）の差が、これ未満なら「大きな差はない」とする */
 export const MIN_EFFICIENCY_GAP = 0.3;
 /** 就寝・勉強などの差が、これ未満（分）なら「ほとんど差はない」とする */
@@ -36,6 +42,8 @@ export type DayFacts = {
   sleepMin: number | null;
   /** 日が終わっているか */
   complete: boolean;
+  /** その日のモチベ（記録した項目の平均、1〜10）。未記録なら null / 省略 */
+  motivation?: number | null;
 };
 
 export type EffSession = { subject: string; date: string; startHour: number; minutes: number; efficiency: number };
@@ -315,12 +323,104 @@ export function bedVsNextDay(days: DayFacts[], sessions: EffSession[]): Section 
   return { lines, pending: earlyEff.length >= MIN.nextDayEfficiency && lateEff.length >= MIN.nextDayEfficiency ? [] : [pending('bed-nextday-eff', '就寝時刻と翌日の勉強の効率', Math.min(earlyEff.length, lateEff.length), MIN.nextDayEfficiency, '件')] };
 }
 
+// ---- モチベ ----
+
+const DOW_NAME = ['日', '月', '火', '水', '木', '金', '土'];
+const oneDecimal = (x: number): string => (Math.round(x * 10) / 10).toFixed(1);
+
+/**
+ * モチベ（記録した項目の平均）と、睡眠時間・Digital・曜日の関係。
+ *  - 睡眠：その日のモチベと、その前の夜の睡眠時間（起床の記録がある夜）
+ *  - Digital：その日のモチベと、その日の「減らしたい時間」（日が終わっている日）
+ *  - 曜日：曜日ごとの平均
+ * どれも「傾向」として書く（原因は言わない）。
+ */
+export function motivationInsights(days: DayFacts[]): Section {
+  const lines: Line[] = [];
+  const pend: Pending[] = [];
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  const withM = days.filter((d): d is DayFacts & { motivation: number } => typeof d.motivation === 'number');
+
+  // 睡眠時間 × モチベ
+  const sleepRows = withM
+    .map((d) => ({ m: d.motivation, x: byDate.get(addDays(d.date, -1))?.sleepMin ?? null }))
+    .filter((r): r is { m: number; x: number } => r.x !== null);
+  if (sleepRows.length < MIN.pairs) {
+    pend.push(pending('motivation-sleep', '睡眠時間とモチベ', sleepRows.length, MIN.pairs, '日分'));
+  } else {
+    const { low, high } = halves(sleepRows, (r) => r.x);
+    const [lm, hm] = [avg(low.map((r) => r.m))!, avg(high.map((r) => r.m))!];
+    const diff = hm - lm;
+    const range = `前の夜の睡眠が長い日（${formatMinutes(Math.min(...high.map((r) => r.x)))}〜）と、短い日（〜${formatMinutes(Math.max(...low.map((r) => r.x)))}）`;
+    lines.push({
+      key: 'motivation-sleep',
+      text:
+        Math.abs(diff) < MIN_MOTIVATION_GAP
+          ? `${range}で、モチベの平均にほとんど差はありません（${sleepRows.length}日分）`
+          : `${range}を比べると、モチベの平均は長い日が ${oneDecimal(hm)}、短い日が ${oneDecimal(lm)} で、睡眠が${diff > 0 ? '長い' : '短い'}日のほうが高い傾向があります（${sleepRows.length}日分）`,
+      n: sleepRows.length,
+      unit: '日',
+      score: Math.abs(diff) < MIN_MOTIVATION_GAP ? 0 : clamp01(Math.abs(diff) / 5),
+    });
+  }
+
+  // Digital × モチベ
+  const digRows = withM.filter((d): d is DayFacts & { motivation: number; digitalMin: number } => d.complete && d.digitalMin !== null);
+  if (digRows.length < MIN.pairs) {
+    pend.push(pending('motivation-digital', 'Digital の長さとモチベ', digRows.length, MIN.pairs, '日分'));
+  } else {
+    const { low, high } = halves(digRows, (r) => r.digitalMin);
+    const [sm, lm] = [avg(low.map((r) => r.motivation))!, avg(high.map((r) => r.motivation))!];
+    const diff = sm - lm; // 正なら、Digital が短い日のほうが高い
+    const range = `Digital が短い日（〜${formatMinutes(Math.max(...low.map((r) => r.digitalMin)))}）と、長い日（${formatMinutes(Math.min(...high.map((r) => r.digitalMin)))}〜）`;
+    lines.push({
+      key: 'motivation-digital',
+      text:
+        Math.abs(diff) < MIN_MOTIVATION_GAP
+          ? `${range}で、モチベの平均にほとんど差はありません（${digRows.length}日分）`
+          : `${range}を比べると、モチベの平均は短い日が ${oneDecimal(sm)}、長い日が ${oneDecimal(lm)} で、Digital が${diff > 0 ? '短い' : '長い'}日のほうが高い傾向があります（${digRows.length}日分）`,
+      n: digRows.length,
+      unit: '日',
+      score: Math.abs(diff) < MIN_MOTIVATION_GAP ? 0 : clamp01(Math.abs(diff) / 5),
+    });
+  }
+
+  // 曜日 × モチベ
+  const byDow = new Map<number, number[]>();
+  for (const d of withM) byDow.set(dayOfWeek(d.date), [...(byDow.get(dayOfWeek(d.date)) ?? []), d.motivation]);
+  const dows = [...byDow.entries()].map(([dow, xs]) => ({ dow, n: xs.length, avg: avg(xs)! }));
+  const enough = dows.filter((x) => x.n >= MIN.weekdayRecords);
+  if (enough.length < MIN.weekdays) {
+    const top = [...dows].sort((a, b) => b.n - a.n).slice(0, MIN.weekdays);
+    const remaining = Array.from({ length: MIN.weekdays }, (_, i) => Math.max(0, MIN.weekdayRecords - (top[i]?.n ?? 0))).reduce((a, b) => a + b, 0);
+    pend.push({ key: 'motivation-weekday', label: '曜日とモチベ', have: withM.length, need: withM.length + remaining, remaining, unit: '日分' });
+  } else {
+    const sorted = [...enough].sort((a, b) => b.avg - a.avg || b.n - a.n);
+    const best = sorted[0]!;
+    const worst = sorted[sorted.length - 1]!;
+    const gap = best.avg - worst.avg;
+    const used = enough.reduce((a, x) => a + x.n, 0);
+    lines.push({
+      key: 'motivation-weekday',
+      text:
+        gap < MIN_MOTIVATION_GAP
+          ? `曜日によるモチベの大きな差は見られません（${used}日分）`
+          : `曜日では、${DOW_NAME[best.dow]}曜日のモチベの平均が最も高く（${oneDecimal(best.avg)}、${best.n}日）、${DOW_NAME[worst.dow]}曜日が最も低め（${oneDecimal(worst.avg)}、${worst.n}日）の傾向があります`,
+      n: used,
+      unit: '日',
+      score: gap < MIN_MOTIVATION_GAP ? 0 : clamp01(gap / 5),
+    });
+  }
+  return { lines, pending: pend };
+}
+
 // ---- まとめ ----
 
 export type InsightsResult = {
   week: Section & { headline: string | null };
   study: { band: Section; length: Section };
   sleep: { digitalBed: Section; bedNextDay: Section };
+  motivation: Section;
   /** Today に出す、いちばん意味のある1件。なければ null */
   top: Line | null;
   /** top がないとき、いちばん近い（あと何件で）項目 */
@@ -341,6 +441,7 @@ export function buildInsights(input: { days: DayFacts[]; sessions: EffSession[];
   const length = efficiencyByLength(input.sessions);
   const digitalBed = digitalVsBed(input.days);
   const bedNextDay = bedVsNextDay(input.days, input.sessions);
-  const { top, nearest } = pickTop([week, band, length, digitalBed, bedNextDay]);
-  return { week: { ...week, headline: weekHeadline(metrics) }, study: { band, length }, sleep: { digitalBed, bedNextDay }, top, nearest };
+  const motivation = motivationInsights(input.days);
+  const { top, nearest } = pickTop([week, band, length, digitalBed, bedNextDay, motivation]);
+  return { week: { ...week, headline: weekHeadline(metrics) }, study: { band, length }, sleep: { digitalBed, bedNextDay }, motivation, top, nearest };
 }

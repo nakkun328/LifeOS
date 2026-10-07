@@ -4,7 +4,8 @@ import { composeJournal, SETTLE_HOUR_JST, type JournalInput } from '@/lib/journa
 import { addDays, bedMinutes, dayKey, dayStart, formatClock } from '@/lib/jst';
 import { durationMinutes } from '@/lib/sleepStats';
 import { studyBySubject } from '@/lib/study';
-import type { AppEventRow, JournalRow, LogRow, SessionRow, SleepRow, SubjectRow, TaskRow, UsageRow } from '@/lib/types';
+import type { MotivRecord } from '@/lib/motivation';
+import type { AppEventRow, JournalRow, MotivationRow, LogRow, SessionRow, SleepRow, SubjectRow, TaskRow, UsageRow } from '@/lib/types';
 import type { Ctx } from '../context';
 import { asObject, badRequest } from '../errors';
 import { getAppSettings } from './settings';
@@ -44,6 +45,7 @@ type Data = {
   nights: Night[];
   usage: UsageRow[];
   iphone: UsageRow[];
+  motivation: MotivRecord[];
   reducible: (category: string) => boolean;
 };
 
@@ -55,7 +57,7 @@ async function loadData(ctx: Ctx, fromKey: string, toKey: string): Promise<Data>
   const from = dayStart(addDays(fromKey, -1), config.boundaryMin);
   const to = dayStart(addDays(toKey, 1), config.boundaryMin);
   const usageFrom = new Date(from.getTime() - 6 * HOUR).toISOString();
-  const [subjects, sessions, tasks, logs, sleepRows, usage, appEvents] = await Promise.all([
+  const [subjects, sessions, tasks, logs, sleepRows, usage, appEvents, motivRows] = await Promise.all([
     db.select<SubjectRow>('subjects'),
     db.select<SessionRow>('sessions', { gte: { started_at: new Date(from.getTime() - 24 * HOUR).toISOString() }, lt: { started_at: to.toISOString() } }),
     db.select<TaskRow>('tasks', { eq: { status: 'done' } }),
@@ -63,6 +65,7 @@ async function loadData(ctx: Ctx, fromKey: string, toKey: string): Promise<Data>
     db.select<SleepRow>('sleep', { gte: { sleep_at: new Date(from.getTime() - 24 * HOUR).toISOString() }, lt: { sleep_at: to.toISOString() } }),
     db.select<UsageRow>('usage', { gte: { start: usageFrom }, lt: { start: to.toISOString() } }),
     db.select<AppEventRow>('app_events', { gte: { at: usageFrom }, lt: { at: to.toISOString() } }),
+    db.select<MotivationRow>('motivation_records', { gte: { record_date: fromKey }, lt: { record_date: addDays(toKey, 1) } }),
   ]);
   return {
     subjects,
@@ -72,6 +75,7 @@ async function loadData(ctx: Ctx, fromKey: string, toKey: string): Promise<Data>
     nights: resolveNights(sleepRows, config.boundaryMin),
     usage,
     iphone: pairAppEvents(appEvents),
+    motivation: motivRows.map((r) => ({ record_date: r.record_date, scores: r.scores ?? {}, comment: r.comment ?? null })),
     reducible: makeReducible(settings.digital),
   };
 }
@@ -114,6 +118,7 @@ export function inputFor(ctx: Ctx, data: Data, key: string): JournalInput {
     tasksDone,
     digital,
     sleep,
+    motivation: data.motivation.find((m) => m.record_date === key) ?? null,
     logs: dayLogs.filter((l) => (l.kind ?? 'log') === 'log').sort(byTime).map((l) => ({ tag: l.tag, body: l.body })),
     decisions: dayLogs.filter((l) => l.kind === 'decision').sort(byTime).map((l) => ({ title: l.title ?? null, body: l.body })),
   };

@@ -15,11 +15,13 @@ import { durationMinutes } from '@/lib/sleepStats';
 import { studyBySubject, type SubjectSeconds } from '@/lib/study';
 import { upcoming } from '@/lib/tasks';
 import type { AppEventRow, GuardEventRow, LogRow, SessionRow, SleepRow, SubjectRow, UsageRow, WordRow, WordTestRow } from '@/lib/types';
+import type { MotivRecord } from '@/lib/motivation';
 import { wordsSummary } from '@/lib/words';
 import type { Ctx } from '../context';
 import { listTodayLogs } from './logs';
 import { getActiveSession, isLongRunning } from './sessions';
 import { getAppSettings } from './settings';
+import { getMotivationOn } from './motivation';
 import { listSubjects } from './subjects';
 import { listTasks, type TaskView } from './tasks';
 
@@ -42,6 +44,8 @@ export type TodayView = {
   tasks: TaskView[];
   logsToday: LogRow[];
   /** 英単語：今日の復習の件数と、いちばん近いテスト */
+  /** 今日のモチベ。未記録なら null */
+  motivation: MotivRecord | null;
   words: { total: number; dueCount: number; nextTest: { name: string; days_left: number; unmastered: number } | null };
   digital: {
     /** 昨日（朝6時〜今朝6時）の、減らしたい時間の合計と前日比 */
@@ -82,6 +86,7 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
     db.select<WordTestRow>('word_tests'),
   ]);
   const words = wordsSummary(wordRows, wordTests, todayKey);
+  const motivation = await getMotivationOn(ctx, todayKey);
   // 週の頭をまたいで始まったセッションも拾うため、1日ぶん広めに取って重なりで数える
   const running = active && !sessions.some((s) => s.id === active.id) ? [...sessions, active] : sessions;
 
@@ -126,6 +131,7 @@ export async function buildToday(ctx: Ctx): Promise<TodayView> {
     },
     tasks: upcoming(tasks, 3) as TaskView[],
     logsToday,
+    motivation,
     words: {
       total: words.total,
       dueCount: words.dueCount,

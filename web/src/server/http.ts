@@ -1,4 +1,4 @@
-import { authenticate, type AuthDeps, type Scope } from './auth';
+import { authenticate, authorizeCron, type AuthDeps, type Scope } from './auth';
 import { createAdminClient, createSupabaseDb } from './supabaseDb';
 import { loadConfig } from './config';
 import { HttpError } from './errors';
@@ -49,6 +49,22 @@ export function api(handler: Handler, opts: { scope?: Scope } = {}) {
       }
       const params = (await route?.params) ?? {};
       return Response.json(await handler(makeCtx(), req, params));
+    } catch (e) {
+      if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
+      console.error(e);
+      return Response.json({ error: 'サーバーでエラーが起きました' }, { status: 500 });
+    }
+  };
+}
+
+/** 定期実行用。認証は CRON_SECRET（Vercel Cron）か LIFEOS_API_TOKEN。ブラウザの JWT では呼べない */
+export function cron(handler: (ctx: Ctx) => Promise<unknown>) {
+  return async (req: Request): Promise<Response> => {
+    try {
+      if (!authorizeCron(req.headers.get('authorization'), { cronSecret: process.env.CRON_SECRET, apiToken: process.env.LIFEOS_API_TOKEN })) {
+        return Response.json({ error: '認証が必要です' }, { status: 401 });
+      }
+      return Response.json(await handler(makeCtx()));
     } catch (e) {
       if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
       console.error(e);

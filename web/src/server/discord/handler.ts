@@ -3,6 +3,7 @@
 import { dayKey, jstParts, parseHm } from '@/lib/jst';
 import { formatDuration, sleepRemainingMs } from '@/lib/messages';
 import { parseDue } from '@/lib/due';
+import { labelOf, motivBar } from '@/lib/motivation';
 import type { Ctx } from '../context';
 import { HttpError } from '../errors';
 import { addLog } from '../handlers/logs';
@@ -13,6 +14,7 @@ import { getAppSettings } from '../handlers/settings';
 import { createTask, listTasks } from '../handlers/tasks';
 import { buildToday } from '../handlers/today';
 import { getJournal } from '../handlers/journal';
+import { setMotivationItem } from '../handlers/motivation';
 import { getWordsSummary } from '../handlers/words';
 import { buildWeek } from '../handlers/week';
 import { formatJournal, formatTasks, formatToday, formatWeek, formatWords } from './format';
@@ -56,6 +58,11 @@ export const PANEL_COMPONENTS = [
   { type: 1, components: [button('今日', 'panel:today'), button('今週', 'panel:week')] },
 ];
 
+const optionNumber = (i: Interaction, name: string): number | null => {
+  const v = i.data?.options?.find((o) => o.name === name)?.value;
+  return typeof v === 'number' ? v : null;
+};
+
 const optionValue = (i: Interaction, name: string): string => {
   const v = i.data?.options?.find((o) => o.name === name)?.value;
   return typeof v === 'string' ? v : '';
@@ -94,6 +101,10 @@ async function handleCommand(ctx: Ctx, i: Interaction): Promise<InteractionRespo
     case 'decision': {
       const d = await addLog(ctx, { kind: 'decision', body: optionValue(i, 'text'), title: optionValue(i, 'title') });
       return reply(`📌 決定事項を残しました${d.title ? `（${d.title}）` : ''}\n${d.body}`);
+    }
+    case 'motiv': {
+      const r = await setMotivationItem(ctx, optionValue(i, 'item'), optionNumber(i, 'score'));
+      return reply(`✅ ${labelOf(r.key)} を ${r.score}/10 で記録したよ！\n${motivBar(r.score)}`);
     }
     case 'words':
       return reply(formatWords(await getWordsSummary(ctx)));

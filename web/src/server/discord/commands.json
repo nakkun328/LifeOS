@@ -108,5 +108,52 @@
     "name": "journal",
     "description": "今日の日記を表示",
     "type": 1
+  },
+  {
+    "name": "motiv",
+    "description": "今日のモチベを1項目だけ記録する",
+    "type": 1,
+    "options": [
+      {
+        "name": "item",
+        "description": "項目",
+        "type": 3,
+        "required": true,
+        "choices": [
+          {
+            "name": "物理部関連",
+            "value": "phys"
+          },
+          {
+            "name": "写真",
+            "value": "photo"
+          },
+          {
+            "name": "動画編集",
+            "value": "video"
+          },
+          {
+            "name": "野球観戦",
+            "value": "baseball"
+          },
+          {
+            "name": "プロスピ",
+            "value": "prospi"
+          },
+          {
+            "name": "その他ゲーム",
+            "value": "game"
+          }
+        ]
+      },
+      {
+        "name": "score",
+        "description": "点数（1〜10）",
+        "type": 4,
+        "required": true,
+        "min_value": 1,
+        "max_value": 10
+      }
+    ]
   }
 ]

@@ -4,6 +4,7 @@ import { handleInteraction, type Interaction } from './discord/handler';
 import { HttpError } from './errors';
 import { getJournal, listJournal, resetJournal, saveJournal, settleAt } from './handlers/journal';
 import { addLog } from './handlers/logs';
+import { saveMotivation } from './handlers/motivation';
 import { at, iso, makeTestCtx } from './testing';
 
 type Ctx = ReturnType<typeof makeTestCtx>;
@@ -94,6 +95,18 @@ describe('Journal：自動生成', () => {
     expect(await status(getJournal(ctx, '2026/10/06'))).toBe(400);
     expect(await status(saveJournal(ctx, '2026-10-08', { body: 'x' }))).toBe(400);
     expect(await status(resetJournal(ctx, '2026-10-08'))).toBe(400);
+  });
+});
+
+describe('Journal：モチベ', () => {
+  it('その日のモチベが1行入る。日付は、記録した日（朝6時区切り）', async () => {
+    const ctx = makeTestCtx('2026-10-06T21:00:00');
+    await seed(ctx);
+    await saveMotivation(ctx, { scores: { phys: 7, game: 4 }, comment: '配線が進んだ' });
+    const body = (await getJournal(at(ctx, '2026-10-07T21:00:00'), '2026-10-06')).body;
+    expect(body).toContain('モチベーションは 物理部関連7・その他ゲーム4 だった（一言：配線が進んだ）。');
+    // 別の日の記録は入らない
+    expect((await getJournal(at(ctx, '2026-10-07T21:00:00'), '2026-10-05')).body).not.toContain('モチベーション');
   });
 });
 

@@ -4,6 +4,7 @@ import {
   bandOf,
   buildInsights,
   digitalVsBed,
+  motivationInsights,
   efficiencyByBand,
   efficiencyByLength,
   lengthOf,
@@ -233,7 +234,7 @@ describe('まとめ・Today に出す1件', () => {
     expect(r.top).toBeNull();
     expect(r.week.lines).toEqual([]);
     expect(r.week.headline).toBeNull();
-    for (const s of [r.week, r.study.band, r.study.length, r.sleep.digitalBed, r.sleep.bedNextDay]) expect(s.pending.length).toBeGreaterThan(0);
+    for (const s of [r.week, r.study.band, r.study.length, r.sleep.digitalBed, r.sleep.bedNextDay, r.motivation]) expect(s.pending.length).toBeGreaterThan(0);
     expect(r.nearest).not.toBeNull();
     expect(r.nearest!.remaining).toBeGreaterThan(0);
   });
@@ -250,5 +251,58 @@ describe('まとめ・Today に出す1件', () => {
     const near = { key: 'n', label: 'N', have: 9, need: 10, remaining: 1, unit: '日分' };
     const far = { key: 'f', label: 'F', have: 2, need: 10, remaining: 8, unit: '日分' };
     expect(pickTop([{ lines: [], pending: [far, near] }]).nearest).toBe(near);
+  });
+});
+
+describe('モチベ × 睡眠・Digital・曜日', () => {
+  const START = '2026-09-01'; // 火曜
+  const make = (n: number, f: (i: number) => Partial<DayFacts>) => Array.from({ length: n }, (_, i) => day(addDays(START, i), { complete: true, ...f(i) }));
+
+  it('件数が少ないうちは、結論を出さず「あと何件」', () => {
+    const s = motivationInsights(make(7, (i) => ({ motivation: 5, sleepMin: 400, digitalMin: 60 + i })));
+    expect(s.lines).toEqual([]);
+    expect(s.pending.map((p) => [p.key, p.have, p.remaining])).toEqual([
+      ['motivation-sleep', 6, MIN.pairs - 6], // 最初の日は、前の夜の睡眠がない
+      ['motivation-digital', 7, MIN.pairs - 7],
+      ['motivation-weekday', 7, (MIN.weekdayRecords - 1) * 2],
+    ]);
+    expect(motivationInsights([]).pending).toHaveLength(3);
+  });
+
+  it('睡眠が長い日ほどモチベが高いデータでは、そう出る（傾向として、件数つき）', () => {
+    // 前の夜の睡眠が 5〜8時間に散らばり、長いほどモチベが高い
+    const days = make(21, (i) => ({ sleepMin: 300 + (i % 7) * 30, motivation: 3 + (((i + 6) % 7)) * 0.8, digitalMin: 100 }));
+    const s = motivationInsights(days);
+    const line = s.lines.find((l) => l.key === 'motivation-sleep')!;
+    expect(line.text).toMatch(/前の夜の睡眠が長い日（.*）と、短い日（.*）を比べると、モチベの平均は長い日が \d+\.\d、短い日が \d+\.\d で、睡眠が長い日のほうが高い傾向があります（20日分）/);
+    expect(line.n).toBe(20);
+    expect(line.score).toBeGreaterThan(0);
+    expect(line.text).not.toMatch(/ため|せいで|原因|だから/);
+  });
+
+  it('Digital が長い日ほどモチベが低いデータでは、そう出る', () => {
+    const days = make(14, (i) => ({ digitalMin: 30 + i * 10, motivation: 9 - i * 0.4 }));
+    const line = motivationInsights(days).lines.find((l) => l.key === 'motivation-digital')!;
+    expect(line.text).toContain('Digital が短い日のほうが高い傾向があります（14日分）');
+  });
+
+  it('差が小さいときは「ほとんど差はありません」で、Today には出さない（score 0）', () => {
+    const days = make(14, (i) => ({ digitalMin: 30 + i * 10, motivation: 6 }));
+    const line = motivationInsights(days).lines.find((l) => l.key === 'motivation-digital')!;
+    expect(line.text).toContain('ほとんど差はありません');
+    expect(line.score).toBe(0);
+  });
+
+  it('曜日：件数を満たした曜日が2つ以上あれば、いちばん高い曜日と低めの曜日を出す', () => {
+    // 火曜(i%7==0)は 9、水曜(i%7==1)は 3、ほかは記録なし。3週間ぶん
+    const days = make(21, (i) => ({ motivation: i % 7 === 0 ? 9 : i % 7 === 1 ? 3 : null }));
+    const line = motivationInsights(days).lines.find((l) => l.key === 'motivation-weekday')!;
+    expect(line.text).toBe('曜日では、火曜日のモチベの平均が最も高く（9.0、3日）、水曜日が最も低め（3.0、3日）の傾向があります');
+    expect(line.n).toBe(6);
+  });
+
+  it('モチベが未記録の日は数えない（欠けは欠けのまま）', () => {
+    const days = make(14, (i) => ({ digitalMin: 30 + i * 10, motivation: i % 2 ? 5 : null }));
+    expect(motivationInsights(days).pending.find((p) => p.key === 'motivation-digital')).toMatchObject({ have: 7 });
   });
 });

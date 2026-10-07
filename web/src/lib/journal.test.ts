@@ -84,3 +84,24 @@ describe('composeJournal', () => {
     expect(r.body).not.toMatch(/ダメ|だらし|怠|サボ|悪|失敗|反省|もっと/);
   });
 });
+
+describe('composeJournal：モチベ', () => {
+  it('その日のモチベを1行入れる（記録した項目だけ。欠けは欠けのまま）', () => {
+    const r = composeJournal(make({ motivation: { scores: { game: 3, phys: 7 }, comment: '配線が進んだ。' } }));
+    expect(r.body).toBe('モチベーションは 物理部関連7・その他ゲーム3 だった（一言：配線が進んだ）。');
+    expect(r.hasData).toBe(true);
+  });
+  it('一言がなければ点数だけ。未記録・点数のない記録なら出さない', () => {
+    expect(composeJournal(make({ motivation: { scores: { phys: 7, photo: 5 }, comment: null } })).body).toBe('モチベーションは 物理部関連7・写真5 だった。');
+    expect(composeJournal(make({ motivation: null })).body).toBe('');
+    expect(composeJournal(make({ motivation: { scores: {}, comment: 'メモだけ' } })).body).toBe('');
+  });
+  it('睡眠の文のあと、ログの前に入る', () => {
+    const r = composeJournal(make({
+      sleep: { bed: '23:30', bedDiffMinutes: null, durationMin: null },
+      motivation: { scores: { phys: 6 }, comment: null },
+      logs: [{ tag: '趣味', body: 'ギター' }],
+    }));
+    expect(r.body.split('\n')).toEqual(['就寝は23:30だった。', 'モチベーションは 物理部関連6 だった。', '趣味：ギター。']);
+  });
+});
