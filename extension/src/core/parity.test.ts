@@ -25,6 +25,22 @@ describe('Web と拡張で、制限の段階の判定が一致する', () => {
     }
   });
 
+  it.each([
+    [0, '03:00'],
+    [1, '03:00'],
+    [2, '04:30'],
+    [0, null],
+  ] as const)('土曜の夜の「制限しない」も一致する：設定 %i・%s（1週間を 1分刻み）', (i, until) => {
+    const g: GuardSettings = { ...guards[i]!, relaxSaturdayUntil: until };
+    const ext = fromServerSettings({ settings: { sleep: { targetBed: '23:30', wakeTime: '06:15' }, guard: g } });
+    expect(ext).not.toBeNull();
+    const start = Date.parse('2026-10-05T00:00:00+09:00'); // 月曜
+    for (let m = 0; m < 8 * 1440; m += 1) {
+      const d = new Date(start + m * 60_000);
+      expect(getStage(ext!, d), d.toISOString()).toBe(getGuardStage(g, d));
+    }
+  });
+
   it('設定の検証も同じ結論になる（通る・通らない）', () => {
     const cases: GuardSettings[] = [
       guards[0]!,
@@ -33,6 +49,10 @@ describe('Web と拡張で、制限の段階の判定が一致する', () => {
       { ...guards[0]!, waitSeconds: -1 },
       { ...guards[0]!, unlockMinutes: 0 },
       { ...guards[0]!, prepareTime: '25:00' },
+      { ...guards[0]!, relaxSaturdayUntil: '03:00' },
+      { ...guards[0]!, relaxSaturdayUntil: '23:00' },
+      { ...guards[0]!, relaxSaturdayUntil: '25:00' },
+      { ...guards[0]!, relaxSaturdayUntil: null },
     ];
     for (const g of cases) {
       const webOk = validateGuard(g).length === 0 && validateSleep({ targetBed: '23:30', wakeTime: '06:15' }).length === 0;

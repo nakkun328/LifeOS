@@ -355,3 +355,31 @@ describe('Today / Study / Sleep / Digital の表示データ', () => {
     expect((await buildToday(ctx)).sleep.lastNight?.durationMin).toBe(410);
   });
 });
+
+describe('土曜の夜は 03:00 まで制限しない', () => {
+  it('設定の画面：土曜の夜は relaxed。ただし設定の変更は、制限中と同じく拒否する（API が 403）', async () => {
+    const ctx = makeTestCtx('2026-10-10T12:00:00'); // 土曜
+    const night = at(ctx, '2026-10-10T23:45:00');
+    const v = await getSettingsView(night);
+    expect(v).toMatchObject({ relaxed: true, locked: true, stage: 'hard' });
+    expect(await status(updateAppSettings(night, { guard: { relaxSaturdayUntil: '05:00' } }))).toBe(403);
+    expect(await status(updateAppSettings(night, { guard: { relaxSaturdayUntil: null } }))).toBe(403);
+    expect(await status(updateAppSettings(night, { sleep: { wakeTime: '09:00' } }))).toBe(403);
+  });
+  it('土曜の昼なら変更できる。時刻を変えても、無効にしても保存される', async () => {
+    const ctx = makeTestCtx('2026-10-10T12:00:00');
+    expect((await getSettingsView(ctx)).settings.guard.relaxSaturdayUntil).toBe('03:00');
+    expect((await updateAppSettings(ctx, { guard: { relaxSaturdayUntil: '04:00' } })).settings.guard.relaxSaturdayUntil).toBe('04:00');
+    expect((await updateAppSettings(ctx, { guard: { relaxSaturdayUntil: null } })).settings.guard.relaxSaturdayUntil).toBeNull();
+    expect((await getSettingsView(ctx)).settings.guard.relaxSaturdayUntil).toBeNull();
+  });
+  it('Level 2 より前の時刻は、400 で断る', async () => {
+    const ctx = makeTestCtx('2026-10-10T12:00:00');
+    expect(await status(updateAppSettings(ctx, { guard: { relaxSaturdayUntil: '23:00' } }))).toBe(400);
+    expect(await status(updateAppSettings(ctx, { guard: { relaxSaturdayUntil: '25:00' } }))).toBe(400);
+  });
+  it('それ以外の日の夜は、これまでどおり', async () => {
+    const ctx = makeTestCtx('2026-10-09T12:00:00'); // 金曜
+    expect(await getSettingsView(at(ctx, '2026-10-09T23:45:00'))).toMatchObject({ relaxed: false, locked: true });
+  });
+});

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_APP_SETTINGS,
   getGuardStage,
+  getScheduleStage,
+  isRelaxedNow,
   isGuardLocked,
   mergeAppSettings,
   normalizePlaylist,
@@ -83,5 +85,40 @@ describe('normalizePlaylist', () => {
     expect(normalizePlaylist('https://www.youtube.com/playlist?list=PLabc')).toBe('PLabc');
     expect(normalizePlaylist(' PLabc ')).toBe('PLabc');
     expect(normalizePlaylist('')).toBe('');
+  });
+});
+
+describe('土曜の夜は、03:00 まで制限しない', () => {
+  // 2026-10-10 は土曜、10-11 は日曜
+  it('初期値は 03:00。土曜の夜だけ、その時刻まで none。それ以降はいつもどおり', () => {
+    expect(G.relaxSaturdayUntil).toBe('03:00');
+    const at = (s: string) => getGuardStage(G, jst(s));
+    expect(at('2026-10-09T23:45:00')).toBe('hard'); // 金曜の夜
+    expect(at('2026-10-10T12:00:00')).toBe('none');
+    expect(at('2026-10-10T22:50:00')).toBe('none');
+    expect(at('2026-10-10T23:45:00')).toBe('none');
+    expect(at('2026-10-11T02:59:59')).toBe('none');
+    expect(at('2026-10-11T03:00:00')).toBe('hard');
+    expect(at('2026-10-11T06:00:00')).toBe('none');
+    expect(at('2026-10-11T23:45:00')).toBe('hard'); // 日曜の夜
+  });
+  it('null なら無効（これまでどおり）', () => {
+    expect(getGuardStage({ ...G, relaxSaturdayUntil: null }, jst('2026-10-10T23:45:00'))).toBe('hard');
+  });
+  it('設定の変更を止める判定は、土曜の夜も、いつもの時刻表のまま（そのまま変更できてしまうと、制限が戻る前に回避できるため）', () => {
+    const d = jst('2026-10-10T23:45:00');
+    expect(getGuardStage(G, d)).toBe('none');
+    expect(getScheduleStage(G, d)).toBe('hard');
+    expect(isGuardLocked(getScheduleStage(G, d))).toBe(true);
+    expect(isRelaxedNow(G, d)).toBe(true);
+    expect(isRelaxedNow(G, jst('2026-10-11T03:30:00'))).toBe(false);
+  });
+  it('検証：Level 2 より後の時刻だけ。形式が違うと弾く。保存済みに項目がなければ初期値になる', () => {
+    expect(validateGuard({ ...G, relaxSaturdayUntil: '23:00' })).not.toEqual([]);
+    expect(validateGuard({ ...G, relaxSaturdayUntil: '25:00' })).not.toEqual([]);
+    expect(validateGuard({ ...G, relaxSaturdayUntil: '04:00' })).toEqual([]);
+    expect(validateGuard({ ...G, relaxSaturdayUntil: null })).toEqual([]);
+    expect(mergeAppSettings({ guard: { level1Time: '23:15' } }).guard.relaxSaturdayUntil).toBe('03:00');
+    expect(mergeAppSettings({ guard: { relaxSaturdayUntil: null } }).guard.relaxSaturdayUntil).toBeNull();
   });
 });

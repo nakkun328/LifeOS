@@ -1,7 +1,8 @@
 import {
   DEFAULT_APP_SETTINGS,
-  getGuardStage,
+  getScheduleStage,
   isGuardLocked,
+  isRelaxedNow,
   mergeAppSettings,
   normalizePlaylist,
   validateAppSettings,
@@ -23,16 +24,19 @@ export async function getAppSettings(ctx: Ctx): Promise<AppSettings> {
 
 export type SettingsView = {
   settings: AppSettings;
+  /** いつもの時刻表での段階。制限中かの判定に使う */
   stage: GuardStage;
-  /** 制限中。Sleep と Night Guard の設定は変更できない */
+  /** 制限中。Sleep と Night Guard の設定は変更できない（土曜の夜の「制限しない」時間も、時刻表の上では制限中なので変更できない） */
   locked: boolean;
+  /** 土曜の夜の「制限しない」時間の中（実際には制限されていない） */
+  relaxed: boolean;
   now: string;
 };
 
 export async function getSettingsView(ctx: Ctx): Promise<SettingsView> {
   const settings = await getAppSettings(ctx);
-  const stage = getGuardStage(settings.guard, ctx.now);
-  return { settings, stage, locked: isGuardLocked(stage), now: ctx.now.toISOString() };
+  const stage = getScheduleStage(settings.guard, ctx.now);
+  return { settings, stage, locked: isGuardLocked(stage), relaxed: isRelaxedNow(settings.guard, ctx.now), now: ctx.now.toISOString() };
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -74,7 +78,7 @@ export async function updateAppSettings(ctx: Ctx, body: unknown): Promise<Settin
   if (errors.length > 0) throw badRequest(errors.join('\n'));
 
   const changesNightRules = !same(next.sleep, current.sleep) || !same(next.guard, current.guard);
-  if (changesNightRules && isGuardLocked(getGuardStage(current.guard, ctx.now))) {
+  if (changesNightRules && isGuardLocked(getScheduleStage(current.guard, ctx.now))) {
     throw forbidden('Night Guard の制限中は、Sleep と Night Guard の設定を変更できません。朝の自動解除のあとに変更してください。');
   }
 
@@ -95,6 +99,7 @@ function strictParse(m: { sleep: Record<string, unknown>; guard: Record<string, 
       waitSeconds: Number(m.guard.waitSeconds),
       unlockMinutes: Number(m.guard.unlockMinutes),
       allowedPlaylists: list(m.guard.allowedPlaylists),
+      relaxSaturdayUntil: m.guard.relaxSaturdayUntil === undefined || m.guard.relaxSaturdayUntil === null || m.guard.relaxSaturdayUntil === '' ? null : String(m.guard.relaxSaturdayUntil),
     },
     digital: { reduce: list(m.digital.reduce).map((x) => x.toLowerCase()), exclude: list(m.digital.exclude).map((x) => x.toLowerCase()) },
   };

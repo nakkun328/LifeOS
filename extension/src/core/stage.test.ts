@@ -120,3 +120,58 @@ describe('今夜の解除回数', () => {
     expect(countUnlocksTonight(events, at(7, 7, 0), '06:00')).toBe(0); // 朝になればリセット
   });
 });
+
+describe('土曜の夜は、設定の時刻（日曜の未明）まで制限しない', () => {
+  // 2026-10-10 は土曜、10-11 は日曜
+  const R = { ...S, relaxSaturdayUntil: '03:00' };
+  it.each([
+    [at(9, 23, 45), 'hard'], // 金曜の夜は、いつもどおり
+    [at(10, 0, 30), 'hard'], // 金曜の夜の続き（土曜の未明）も、いつもどおり
+    [at(10, 5, 59), 'hard'],
+    [at(10, 6, 0), 'none'], // 土曜の朝の自動解除
+    [at(10, 12, 0), 'none'],
+    [at(10, 22, 45), 'none'], // 土曜の夜：準備の通知の時刻だが、何もない
+    [at(10, 23, 15), 'none'], // Level 1 の時刻でも制限しない
+    [at(10, 23, 45), 'none'],
+    [at(11, 0, 30), 'none'],
+    [at(11, 2, 59, 59), 'none'],
+    [at(11, 3, 0), 'hard'], // 設定の時刻から、制限が戻る
+    [at(11, 5, 59), 'hard'],
+    [at(11, 6, 0), 'none'],
+    [at(11, 23, 45), 'hard'], // 日曜の夜は、いつもどおり
+    [at(12, 0, 30), 'hard'],
+  ])('%s → %s', (d, stage) => {
+    expect(getStage(R, d)).toBe(stage);
+  });
+  it('設定がない・null のときは、これまでどおり', () => {
+    expect(getStage(S, at(10, 23, 45))).toBe('hard');
+    expect(getStage({ ...S, relaxSaturdayUntil: null }, at(10, 23, 45))).toBe('hard');
+  });
+  it('次の変わり目：土曜の夜は、制限しない時間の終わり', () => {
+    const a = getNextTransition(R, at(10, 12, 0));
+    expect(a.to).toBe('hard');
+    expect(a.at.getTime()).toBe(at(11, 3, 0).getTime());
+    const b = getNextTransition(R, at(10, 23, 30));
+    expect(b.to).toBe('hard');
+    expect(b.at.getTime()).toBe(at(11, 3, 0).getTime());
+  });
+  it('次の変わり目：土曜の夜でない日は、いつもどおり。制限が戻ったあとは翌朝の自動解除', () => {
+    const fri = getNextTransition(R, at(9, 12, 0));
+    expect(fri.to).toBe('prepare');
+    expect(fri.at.getTime()).toBe(at(9, 22, 45).getTime());
+    const sun = getNextTransition(R, at(11, 3, 30));
+    expect(sun.to).toBe('none');
+    expect(sun.at.getTime()).toBe(at(11, 6, 0).getTime());
+  });
+  it('金曜の昼から見ると、次の変わり目は金曜の夜の準備。土曜の準備の通知は飛ばす', () => {
+    const afterSat = getNextTransition(R, at(10, 6, 30));
+    expect(afterSat.to).toBe('hard');
+    expect(afterSat.at.getTime()).toBe(at(11, 3, 0).getTime());
+  });
+  it('検証：制限しない時刻は Level 2 より後。形式が違うと弾く', () => {
+    expect(validateSettings(R)).toEqual([]);
+    expect(validateSettings({ ...S, relaxSaturdayUntil: '23:00' })).not.toEqual([]);
+    expect(validateSettings({ ...S, relaxSaturdayUntil: '25:00' })).not.toEqual([]);
+    expect(validateSettings({ ...S, relaxSaturdayUntil: null })).toEqual([]);
+  });
+});

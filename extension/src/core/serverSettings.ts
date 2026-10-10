@@ -31,6 +31,8 @@ export function fromServerSettings(json: unknown): Settings | null {
   const times = [mapped.prepareTime, mapped.softTime, mapped.hardTime, mapped.releaseTime, mapped.wakeTime];
   if (times.some((t) => typeof t !== 'string') || typeof mapped.waitSeconds !== 'number' || typeof mapped.unlockMinutes !== 'number') return null;
 
-  const result = mapped as Settings;
+  const relax = guard.relaxSaturdayUntil;
+  if (relax !== undefined && relax !== null && typeof relax !== 'string') return null;
+  const result = { ...mapped, relaxSaturdayUntil: relax ?? null } as Settings;
   return validateSettings(result).length === 0 ? result : null;
 }
