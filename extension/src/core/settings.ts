@@ -43,6 +43,16 @@ export function validateSettings(s: Settings): string[] {
       errors.push('時刻は「寝る準備 → 制限 → YouTube全体の制限」の順にしてください');
     }
   }
+  if (s.relaxSaturdayUntil !== undefined && s.relaxSaturdayUntil !== null) {
+    const until = parseHm(s.relaxSaturdayUntil);
+    if (until === null) errors.push('土曜の夜の制限しない時刻が正しくありません');
+    else if (errors.length === 0) {
+      const rel = parseHm(s.releaseTime)!;
+      if (minutesSinceRelease(until, rel) <= minutesSinceRelease(parseHm(s.hardTime)!, rel)) {
+        errors.push('土曜の夜の制限しない時刻は、YouTube全体の制限より後にしてください');
+      }
+    }
+  }
   if (!Number.isInteger(s.waitSeconds) || s.waitSeconds < 0 || s.waitSeconds > 600) {
     errors.push('待ち時間は 0〜600 秒の整数にしてください');
   }

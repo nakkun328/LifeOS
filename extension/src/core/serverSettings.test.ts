@@ -31,6 +31,7 @@ describe('fromServerSettings', () => {
       waitSeconds: 30,
       unlockMinutes: 10,
       allowedPlaylists: ['PLabc'],
+      relaxSaturdayUntil: null,
     });
   });
 

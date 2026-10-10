@@ -19,7 +19,12 @@ export function SettingsPage() {
   return (
     <AppShell title="Settings" back="/">
       <div className="err">{error}</div>
-      {v.locked && (
+      {v.relaxed && (
+        <div className="banner span-all" role="status">
+          いまは土曜の夜の<strong>制限しない時間</strong>です（実際の制限はありません）。設定の変更は、制限中と同じく、朝の自動解除のあとにできます。
+        </div>
+      )}
+      {v.locked && !v.relaxed && (
         <div className="banner span-all" role="status">
           Night Guard の制限中のため、<strong>Sleep と Night Guard</strong> の設定は変更できません（朝の自動解除のあとに変更できます）。
         </div>
@@ -71,8 +76,9 @@ function SleepForm({ s, locked, act }: { s: AppSettings; locked: boolean; act: A
 
 function GuardForm({ s, locked, act }: { s: AppSettings; locked: boolean; act: Act; onSaved: () => void }) {
   const g = s.guard;
-  const [f, setF] = useState({ ...g, allowed: g.allowedPlaylists.join('\n') });
-  useEffect(() => setF({ ...g, allowed: g.allowedPlaylists.join('\n') }), [g]);
+  const init = (x: typeof g) => ({ ...x, allowed: x.allowedPlaylists.join('\n'), relaxOn: !!x.relaxSaturdayUntil, relaxTime: x.relaxSaturdayUntil || '03:00' });
+  const [f, setF] = useState(init(g));
+  useEffect(() => setF(init(g)), [g]);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const { ok, save } = useSave(act);
   const time = (k: 'prepareTime' | 'level1Time' | 'level2Time' | 'releaseTime', label: string) => (
@@ -88,6 +94,14 @@ function GuardForm({ s, locked, act }: { s: AppSettings; locked: boolean; act: A
         {time('releaseTime', '自動解除')}
         <label className="field">待ち時間（秒）<input type="number" min={0} max={600} value={f.waitSeconds} disabled={locked} onChange={(e) => set('waitSeconds', Number(e.target.value))} /></label>
         <label className="field">解除時間（分）<input type="number" min={1} max={180} value={f.unlockMinutes} disabled={locked} onChange={(e) => set('unlockMinutes', Number(e.target.value))} /></label>
+        <div className="field">
+          <label className="row" style={{ gap: 8 }}>
+            <input type="checkbox" checked={f.relaxOn} disabled={locked} onChange={(e) => set('relaxOn', e.target.checked)} />
+            土曜の夜は、次の時刻まで制限しない
+          </label>
+          <input type="time" value={f.relaxTime} disabled={locked || !f.relaxOn} onChange={(e) => set('relaxTime', e.target.value)} aria-label="土曜の夜に制限しない時刻" />
+          <span className="sub">土曜の夜から日曜の未明まで、この時刻（Level 2 より後）まで、通知も制限もありません。過ぎると、いつもの制限に戻り、朝の自動解除まで続きます。制限しない時間も、設定は変更できません（先に決めておきます）。</span>
+        </div>
         <label className="field">許可する再生リスト（1行に1つ。URL でも ID でも）
           <textarea rows={4} value={f.allowed} disabled={locked} onChange={(e) => set('allowed', e.target.value)} spellCheck={false} />
         </label>
@@ -95,7 +109,7 @@ function GuardForm({ s, locked, act }: { s: AppSettings; locked: boolean; act: A
           <button
             className="primary"
             disabled={locked}
-            onClick={() => save({ guard: { prepareTime: f.prepareTime, level1Time: f.level1Time, level2Time: f.level2Time, releaseTime: f.releaseTime, waitSeconds: f.waitSeconds, unlockMinutes: f.unlockMinutes, allowedPlaylists: lines(f.allowed) } })}
+            onClick={() => save({ guard: { prepareTime: f.prepareTime, level1Time: f.level1Time, level2Time: f.level2Time, releaseTime: f.releaseTime, waitSeconds: f.waitSeconds, unlockMinutes: f.unlockMinutes, allowedPlaylists: lines(f.allowed), relaxSaturdayUntil: f.relaxOn ? f.relaxTime : null } })}
           >
             保存
           </button>

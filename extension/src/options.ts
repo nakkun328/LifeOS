@@ -15,6 +15,7 @@ function showSettings(s: Settings): void {
   text('v-wakeTime', s.wakeTime);
   text('v-waitSeconds', `${s.waitSeconds} 秒`);
   text('v-unlockMinutes', `${s.unlockMinutes} 分`);
+  text('v-relaxSaturdayUntil', s.relaxSaturdayUntil ? `日曜の ${s.relaxSaturdayUntil} まで` : 'なし');
   text('v-allowedPlaylists', s.allowedPlaylists.length === 0 ? 'なし' : `${s.allowedPlaylists.length} 件`);
 }
 

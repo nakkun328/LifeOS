@@ -12,6 +12,8 @@ export type Settings = {
   unlockMinutes: number;
   /** 許可する再生リストID（URLの list= の値） */
   allowedPlaylists: string[];
+  /** 土曜の夜は、この時刻（日曜の未明）まで制限しない。未設定・null は無効 */
+  relaxSaturdayUntil?: string | null;
 };
 
 /** サイト別の一時解除期限（epoch ms） */
