@@ -21,7 +21,7 @@ export function SettingsPage() {
       <div className="err">{error}</div>
       {v.relaxed && (
         <div className="banner span-all" role="status">
-          いまは土曜の夜の<strong>制限しない時間</strong>です（実際の制限はありません）。設定の変更は、制限中と同じく、朝の自動解除のあとにできます。
+          いまは<strong>制限しない時間</strong>（土曜の夜・今夜だけ）です（実際の制限はありません）。設定の変更は、制限中と同じく、朝の自動解除のあとにできます。
         </div>
       )}
       {v.locked && !v.relaxed && (
@@ -32,6 +32,7 @@ export function SettingsPage() {
       <div className="cards">
         <SleepForm s={v.settings} locked={v.locked} act={act} onSaved={reload} />
         <GuardForm s={v.settings} locked={v.locked} act={act} onSaved={reload} />
+        <TonightForm s={v.settings} tonight={v.tonight} locked={v.locked} act={act} />
         <DigitalForm s={v.settings} act={act} />
         <section className="card">
           <h2>Study：科目</h2>
@@ -113,6 +114,30 @@ function GuardForm({ s, locked, act }: { s: AppSettings; locked: boolean; act: A
           >
             保存
           </button>
+          <span className="sub">{ok}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** 今夜だけ「制限しない」時刻を決める。この夜が明ければ当てはまらなくなる（自動で元に戻る） */
+function TonightForm({ s, tonight, locked, act }: { s: AppSettings; tonight: string; locked: boolean; act: Act }) {
+  const g = s.guard;
+  const active = g.relaxOnce?.night === tonight ? g.relaxOnce : null;
+  const [time, setTime] = useState(active?.until ?? g.relaxSaturdayUntil ?? '03:00');
+  useEffect(() => setTime(active?.until ?? g.relaxSaturdayUntil ?? '03:00'), [active?.until, g.relaxSaturdayUntil]);
+  const { ok, save } = useSave(act);
+  return (
+    <section className="card">
+      <h2>今夜だけ{locked && <span className="badge warn">制限中は変更不可</span>}</h2>
+      <div className="form-grid">
+        <div className="sub">{active ? `今夜は ${active.until} まで制限しません。` : '今夜の指定はありません。'}</div>
+        <label className="field">今夜は、次の時刻まで制限しない<input type="time" value={time} disabled={locked} onChange={(e) => setTime(e.target.value)} /></label>
+        <span className="sub">今夜（{tonight.slice(5).replace('-', '/')} の夜）だけです。朝の自動解除で元の設定に戻ります。土曜の夜に使うと、土曜の設定の代わりにこの時刻になります。Level 1 の前に決めておきます。</span>
+        <div className="row">
+          <button className="primary" disabled={locked} onClick={() => save({ guard: { relaxOnce: { night: tonight, until: time } } })}>今夜だけ設定</button>
+          {active && <button disabled={locked} onClick={() => save({ guard: { relaxOnce: null } })}>取り消す</button>}
           <span className="sub">{ok}</span>
         </div>
       </div>

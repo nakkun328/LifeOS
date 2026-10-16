@@ -53,6 +53,20 @@ export function validateSettings(s: Settings): string[] {
       }
     }
   }
+  if (s.relaxOnce !== undefined && s.relaxOnce !== null) {
+    const until = parseHm(s.relaxOnce.until);
+    const night = s.relaxOnce.night;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(night) || Number.isNaN(Date.parse(`${night}T00:00:00Z`)) || !new Date(`${night}T00:00:00Z`).toISOString().startsWith(night)) {
+      errors.push('今夜だけの制限しない日付が正しくありません');
+    }
+    if (until === null) errors.push('今夜だけの制限しない時刻が正しくありません');
+    else if (errors.length === 0) {
+      const rel = parseHm(s.releaseTime)!;
+      if (minutesSinceRelease(until, rel) <= minutesSinceRelease(parseHm(s.hardTime)!, rel)) {
+        errors.push('今夜だけの制限しない時刻は、YouTube全体の制限より後にしてください');
+      }
+    }
+  }
   if (!Number.isInteger(s.waitSeconds) || s.waitSeconds < 0 || s.waitSeconds > 600) {
     errors.push('待ち時間は 0〜600 秒の整数にしてください');
   }

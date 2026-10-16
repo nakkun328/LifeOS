@@ -23,7 +23,14 @@ export type GuardSettings = {
    * null は無効。時刻を過ぎたら、いつもどおりの段階（通常は Level 2）に戻る。
    */
   relaxSaturdayUntil?: string | null;
+  /**
+   * 1回だけの「制限しない」。night（その夜の始まり＝自動解除の時刻の日付 "YYYY-MM-DD"）の夜だけ、until（"HH:MM"）まで制限しない。
+   * その夜は土曜の設定より優先する。夜が明ければ当てはまらなくなるので、自動で元に戻る。null は無効。
+   */
+  relaxOnce?: RelaxOnce | null;
 };
+
+export type RelaxOnce = { night: string; until: string };
 
 export type DigitalSettings = {
   /** 減らしたいサービス（利用時間のカテゴリ名／iPhone のアプリ名、小文字） */
@@ -47,6 +54,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     unlockMinutes: 10,
     allowedPlaylists: [],
     relaxSaturdayUntil: '03:00',
+    relaxOnce: null,
   },
   digital: {
     reduce: ['youtube', 'youtube_shorts', 'x', 'instagram', 'tiktok'],
@@ -55,6 +63,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 };
 
 const DAY = 1440;
+const isDateKey = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().startsWith(v);
 const sinceRelease = (m: number, rel: number) => (((m - rel) % DAY) + DAY) % DAY;
 
 export function validateSleep(s: SleepSettings): string[] {
@@ -90,6 +99,14 @@ export function validateGuard(g: GuardSettings): string[] {
       errors.push('土曜の夜の制限しない時刻は、Level 2 の時刻より後にしてください');
     }
   }
+  if (g.relaxOnce !== undefined && g.relaxOnce !== null) {
+    const until = parseHm(g.relaxOnce.until);
+    if (!isDateKey(g.relaxOnce.night)) errors.push('今夜だけの制限しない日付の形式が正しくありません');
+    if (until === null) errors.push('今夜だけの制限しない時刻の形式が正しくありません');
+    else if (errors.length === 0 && sinceRelease(until, parseHm(g.releaseTime)!) <= sinceRelease(parseHm(g.level2Time)!, parseHm(g.releaseTime)!)) {
+      errors.push('今夜だけの制限しない時刻は、Level 2 の時刻より後にしてください');
+    }
+  }
   if (g.allowedPlaylists.length > 100) errors.push('許可する再生リストは 100 件までです');
   return errors;
 }
@@ -114,6 +131,13 @@ const strList = (v: unknown, d: string[], lower = false) =>
     ? [...new Set(v.filter((x): x is string => typeof x === 'string').map((x) => (lower ? x.trim().toLowerCase() : x.trim())).filter(Boolean))]
     : d;
 
+/** 1回だけの「制限しない」の型を整える（値の検証は validateGuard） */
+export function parseRelaxOnce(v: unknown): RelaxOnce | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const o = v as Record<string, unknown>;
+  return { night: String(o.night ?? ''), until: String(o.until ?? '') };
+}
+
 /** 保存値（または入力）と初期値を合成する。型が違うもの・検証に通らない節は初期値に戻す */
 export function mergeAppSettings(raw: unknown, base: AppSettings = DEFAULT_APP_SETTINGS): AppSettings {
   const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, Record<string, unknown> | undefined>;
@@ -133,6 +157,7 @@ export function mergeAppSettings(raw: unknown, base: AppSettings = DEFAULT_APP_S
     unlockMinutes: num(guardRaw.unlockMinutes, base.guard.unlockMinutes),
     allowedPlaylists: strList(guardRaw.allowedPlaylists, base.guard.allowedPlaylists),
     relaxSaturdayUntil: 'relaxSaturdayUntil' in guardRaw ? (guardRaw.relaxSaturdayUntil === null ? null : str(guardRaw.relaxSaturdayUntil, base.guard.relaxSaturdayUntil ?? '')) : (base.guard.relaxSaturdayUntil ?? null),
+    relaxOnce: 'relaxOnce' in guardRaw ? parseRelaxOnce(guardRaw.relaxOnce) : (base.guard.relaxOnce ?? null),
   };
   const digital: DigitalSettings = {
     reduce: strList(digitalRaw.reduce, base.digital.reduce, true),
@@ -156,13 +181,29 @@ function elapsedSinceRelease(now: Date, releaseMin: number): number {
   return (((sec - releaseMin * 60) % 86400) + 86400) % 86400;
 }
 
-/** 土曜の夜の「制限しない」時間か。夜の始まり（自動解除の時刻）の曜日が土曜で、まだ設定の時刻より前 */
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** いまの夜の日付（夜の始まり＝直近の自動解除の時刻の、日本時間の日付 "YYYY-MM-DD"）。今夜だけの「制限しない」の night に使う */
+export function nightKey(g: GuardSettings, now: Date): string {
+  const p = jstParts(new Date(now.getTime() - elapsedSinceRelease(now, parseHm(g.releaseTime)!) * 1000));
+  return `${p.y}-${pad2(p.m)}-${pad2(p.d)}`;
+}
+
+/**
+ * 「制限しない」時間か。今夜だけの指定がこの夜に当たればその時刻まで（土曜の設定より優先）。
+ * なければ、夜の始まり（自動解除の時刻）の曜日が土曜で、土曜の設定の時刻より前
+ */
 function isRelaxed(g: GuardSettings, now: Date, elapsedSec: number, rel: number): boolean {
+  const start = jstParts(new Date(now.getTime() - elapsedSec * 1000));
+  const once = g.relaxOnce;
+  if (once && once.night === `${start.y}-${pad2(start.m)}-${pad2(start.d)}`) {
+    const until = parseHm(once.until);
+    return until !== null && elapsedSec < sinceRelease(until, rel) * 60;
+  }
   if (!g.relaxSaturdayUntil) return false;
   const until = parseHm(g.relaxSaturdayUntil);
   if (until === null) return false;
-  const nightStartDow = jstParts(new Date(now.getTime() - elapsedSec * 1000)).dow;
-  return nightStartDow === 6 && elapsedSec < sinceRelease(until, rel) * 60;
+  return start.dow === 6 && elapsedSec < sinceRelease(until, rel) * 60;
 }
 
 /** いつもの時刻表だけで決まる段階（土曜の夜の「制限しない」は考えない）。設定の変更を止めるかの判定に使う */
@@ -182,7 +223,7 @@ export function getGuardStage(g: GuardSettings, now: Date): GuardStage {
   return isRelaxed(g, now, elapsedSinceRelease(now, rel), rel) ? 'none' : getScheduleStage(g, now);
 }
 
-/** 土曜の夜の「制限しない」時間の中か（表示用） */
+/** 「制限しない」時間（土曜の夜・今夜だけ）の中か（表示用） */
 export function isRelaxedNow(g: GuardSettings, now: Date): boolean {
   const rel = parseHm(g.releaseTime)!;
   return isRelaxed(g, now, elapsedSinceRelease(now, rel), rel);

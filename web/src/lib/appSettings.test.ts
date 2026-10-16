@@ -6,6 +6,7 @@ import {
   isRelaxedNow,
   isGuardLocked,
   mergeAppSettings,
+  nightKey,
   normalizePlaylist,
   validateAppSettings,
   validateGuard,
@@ -120,5 +121,38 @@ describe('土曜の夜は、03:00 まで制限しない', () => {
     expect(validateGuard({ ...G, relaxSaturdayUntil: null })).toEqual([]);
     expect(mergeAppSettings({ guard: { level1Time: '23:15' } }).guard.relaxSaturdayUntil).toBe('03:00');
     expect(mergeAppSettings({ guard: { relaxSaturdayUntil: null } }).guard.relaxSaturdayUntil).toBeNull();
+  });
+});
+
+describe('今夜だけ「制限しない」（1回だけ。夜が明ければ元に戻る）', () => {
+  // 2026-10-14 は水曜、10-17 は土曜
+  it('指定した夜だけ、その時刻まで none。次の夜は、いつもどおり', () => {
+    const g = { ...G, relaxOnce: { night: '2026-10-14', until: '01:00' } };
+    const at = (s: string) => getGuardStage(g, jst(s));
+    expect(at('2026-10-14T23:45:00')).toBe('none');
+    expect(at('2026-10-15T00:59:59')).toBe('none');
+    expect(at('2026-10-15T01:00:00')).toBe('hard');
+    expect(at('2026-10-15T23:45:00')).toBe('hard'); // 次の夜
+    expect(at('2026-10-13T23:45:00')).toBe('hard'); // 前の夜
+  });
+  it('土曜の夜は、土曜の設定の代わりにこの時刻になる（04:00 まで延ばせる・短くもできる）', () => {
+    expect(getGuardStage({ ...G, relaxOnce: { night: '2026-10-17', until: '04:00' } }, jst('2026-10-18T03:30:00'))).toBe('none');
+    expect(getGuardStage({ ...G, relaxOnce: { night: '2026-10-17', until: '04:00' } }, jst('2026-10-18T04:00:00'))).toBe('hard');
+    expect(getGuardStage({ ...G, relaxOnce: { night: '2026-10-17', until: '01:00' } }, jst('2026-10-18T02:00:00'))).toBe('hard');
+    expect(getGuardStage({ ...G, relaxOnce: { night: '2026-10-17', until: '04:00' } }, jst('2026-10-25T02:00:00'))).toBe('none'); // 次の土曜は、いつもの 03:00
+    expect(getGuardStage({ ...G, relaxOnce: { night: '2026-10-17', until: '04:00' } }, jst('2026-10-25T03:30:00'))).toBe('hard');
+  });
+  it('いまの夜の日付は、直近の自動解除の時刻の日付', () => {
+    expect(nightKey(G, jst('2026-10-14T12:00:00'))).toBe('2026-10-14');
+    expect(nightKey(G, jst('2026-10-15T02:00:00'))).toBe('2026-10-14');
+    expect(nightKey(G, jst('2026-10-15T06:00:00'))).toBe('2026-10-15');
+  });
+  it('検証：日付と時刻の形式、Level 2 より後', () => {
+    expect(validateGuard({ ...G, relaxOnce: { night: '2026-10-14', until: '04:00' } })).toEqual([]);
+    expect(validateGuard({ ...G, relaxOnce: { night: '2026-10-14', until: '23:00' } })).not.toEqual([]);
+    expect(validateGuard({ ...G, relaxOnce: { night: '2026-13-40', until: '04:00' } })).not.toEqual([]);
+    expect(validateGuard({ ...G, relaxOnce: { night: 'today', until: '04:00' } })).not.toEqual([]);
+    expect(validateGuard({ ...G, relaxOnce: null })).toEqual([]);
+    expect(mergeAppSettings({ guard: {} }).guard.relaxOnce).toBeNull();
   });
 });

@@ -14,6 +14,8 @@ export type Settings = {
   allowedPlaylists: string[];
   /** 土曜の夜は、この時刻（日曜の未明）まで制限しない。未設定・null は無効 */
   relaxSaturdayUntil?: string | null;
+  /** 1回だけの「制限しない」。night（夜の始まり＝自動解除の時刻の日付）の夜だけ until まで。土曜の設定より優先。null は無効 */
+  relaxOnce?: { night: string; until: string } | null;
 };
 
 /** サイト別の一時解除期限（epoch ms） */
