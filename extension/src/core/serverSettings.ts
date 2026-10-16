@@ -33,6 +33,13 @@ export function fromServerSettings(json: unknown): Settings | null {
 
   const relax = guard.relaxSaturdayUntil;
   if (relax !== undefined && relax !== null && typeof relax !== 'string') return null;
-  const result = { ...mapped, relaxSaturdayUntil: relax ?? null } as Settings;
+  const once = guard.relaxOnce;
+  let relaxOnce: Settings['relaxOnce'] = null;
+  if (once !== undefined && once !== null) {
+    const o = obj(once);
+    if (!o || typeof o.night !== 'string' || typeof o.until !== 'string') return null;
+    relaxOnce = { night: o.night, until: o.until };
+  }
+  const result = { ...mapped, relaxSaturdayUntil: relax ?? null, relaxOnce } as Settings;
   return validateSettings(result).length === 0 ? result : null;
 }

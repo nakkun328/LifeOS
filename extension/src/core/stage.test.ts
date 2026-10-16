@@ -175,3 +175,32 @@ describe('土曜の夜は、設定の時刻（日曜の未明）まで制限し�
     expect(validateSettings({ ...S, relaxSaturdayUntil: null })).toEqual([]);
   });
 });
+
+describe('今夜だけ「制限しない」', () => {
+  // 2026-10-14 は水曜、10-17 は土曜
+  const O = { ...S, relaxSaturdayUntil: '03:00', relaxOnce: { night: '2026-10-14', until: '01:00' } };
+  it.each([
+    [at(14, 22, 50), 'none'],
+    [at(14, 23, 45), 'none'],
+    [at(15, 0, 59, 59), 'none'],
+    [at(15, 1, 0), 'hard'],
+    [at(15, 23, 45), 'hard'], // 次の夜は、いつもどおり
+  ])('%s → %s', (d, stage) => {
+    expect(getStage(O, d)).toBe(stage);
+  });
+  it('土曜の夜は、土曜の設定の代わりになる', () => {
+    const sat = { ...O, relaxOnce: { night: '2026-10-17', until: '04:00' } };
+    expect(getStage(sat, at(18, 3, 30))).toBe('none');
+    expect(getStage(sat, at(18, 4, 0))).toBe('hard');
+  });
+  it('次の変わり目は、指定の時刻', () => {
+    const n = getNextTransition(O, at(14, 12, 0));
+    expect(n.to).toBe('hard');
+    expect(n.at.getTime()).toBe(at(15, 1, 0).getTime());
+  });
+  it('検証', () => {
+    expect(validateSettings(O)).toEqual([]);
+    expect(validateSettings({ ...O, relaxOnce: { night: '2026-10-14', until: '23:00' } })).not.toEqual([]);
+    expect(validateSettings({ ...O, relaxOnce: { night: '2026-02-30', until: '01:00' } })).not.toEqual([]);
+  });
+});

@@ -32,7 +32,13 @@ describe('fromServerSettings', () => {
       unlockMinutes: 10,
       allowedPlaylists: ['PLabc'],
       relaxSaturdayUntil: null,
+      relaxOnce: null,
     });
+  });
+
+  it('今夜だけの「制限しない」も取り込む。形が違えば取り込まない', () => {
+    expect(fromServerSettings(server({ guard: { relaxOnce: { night: '2026-10-17', until: '04:00' } } }))?.relaxOnce).toEqual({ night: '2026-10-17', until: '04:00' });
+    expect(fromServerSettings(server({ guard: { relaxOnce: 'x' } }))).toBeNull();
   });
 
   it('起床時刻を Settings で変えると、拡張の起床時刻も変わる（起床時刻の唯一の正）', () => {

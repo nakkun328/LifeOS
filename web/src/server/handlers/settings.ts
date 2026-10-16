@@ -4,9 +4,12 @@ import {
   isGuardLocked,
   isRelaxedNow,
   mergeAppSettings,
+  nightKey,
   normalizePlaylist,
+  parseRelaxOnce,
   validateAppSettings,
   type AppSettings,
+  type GuardSettings,
   type GuardStage,
 } from '@/lib/appSettings';
 import type { Ctx } from '../context';
@@ -30,13 +33,15 @@ export type SettingsView = {
   locked: boolean;
   /** 土曜の夜の「制限しない」時間の中（実際には制限されていない） */
   relaxed: boolean;
+  /** いまの夜の日付。今夜だけの「制限しない」は、この日付で保存する */
+  tonight: string;
   now: string;
 };
 
 export async function getSettingsView(ctx: Ctx): Promise<SettingsView> {
   const settings = await getAppSettings(ctx);
   const stage = getScheduleStage(settings.guard, ctx.now);
-  return { settings, stage, locked: isGuardLocked(stage), relaxed: isRelaxedNow(settings.guard, ctx.now), now: ctx.now.toISOString() };
+  return { settings, stage, locked: isGuardLocked(stage), relaxed: isRelaxedNow(settings.guard, ctx.now), tonight: nightKey(settings.guard, ctx.now), now: ctx.now.toISOString() };
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -64,11 +69,13 @@ function normalizeInput(body: Record<string, unknown>): Record<string, unknown> 
  */
 export async function updateAppSettings(ctx: Ctx, body: unknown): Promise<SettingsView> {
   const input = normalizeInput(asObject(body));
-  const current = await getAppSettings(ctx);
+  const stored = await getAppSettings(ctx);
+  // 過ぎた夜の「今夜だけ」は、保存のときに消す（判定には使われないので、消しても動きは変わらない）
+  const current = { ...stored, guard: dropPastRelaxOnce(stored.guard, ctx.now) };
 
   const merged = {
     sleep: { ...current.sleep, ...(asObject(input.sleep ?? {})) },
-    guard: { ...current.guard, ...(asObject(input.guard ?? {})) },
+    guard: dropPastRelaxOnce({ ...current.guard, ...(asObject(input.guard ?? {})) } as GuardSettings, ctx.now) as Record<string, unknown>,
     digital: { ...current.digital, ...(asObject(input.digital ?? {})) },
   };
   const next = mergeAppSettings(merged, DEFAULT_APP_SETTINGS);
@@ -86,6 +93,12 @@ export async function updateAppSettings(ctx: Ctx, body: unknown): Promise<Settin
   return getSettingsView(ctx);
 }
 
+function dropPastRelaxOnce(g: GuardSettings, now: Date): GuardSettings {
+  const once = g.relaxOnce;
+  if (!once || typeof once !== 'object' || typeof once.night !== 'string') return g;
+  return once.night < nightKey(g, now) ? { ...g, relaxOnce: null } : g;
+}
+
 /** 型だけ整える（値の補正や初期値への置き換えはしない。検証で弾くため） */
 function strictParse(m: { sleep: Record<string, unknown>; guard: Record<string, unknown>; digital: Record<string, unknown> }): AppSettings {
   const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean) : []);
@@ -100,6 +113,7 @@ function strictParse(m: { sleep: Record<string, unknown>; guard: Record<string, 
       unlockMinutes: Number(m.guard.unlockMinutes),
       allowedPlaylists: list(m.guard.allowedPlaylists),
       relaxSaturdayUntil: m.guard.relaxSaturdayUntil === undefined || m.guard.relaxSaturdayUntil === null || m.guard.relaxSaturdayUntil === '' ? null : String(m.guard.relaxSaturdayUntil),
+      relaxOnce: parseRelaxOnce(m.guard.relaxOnce),
     },
     digital: { reduce: list(m.digital.reduce).map((x) => x.toLowerCase()), exclude: list(m.digital.exclude).map((x) => x.toLowerCase()) },
   };

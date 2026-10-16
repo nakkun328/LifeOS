@@ -383,3 +383,33 @@ describe('土曜の夜は 03:00 まで制限しない', () => {
     expect(await getSettingsView(at(ctx, '2026-10-09T23:45:00'))).toMatchObject({ relaxed: false, locked: true });
   });
 });
+
+describe('今夜だけ「制限しない」', () => {
+  it('昼に今夜の時刻を決めると、その夜だけ制限しない。翌日の夜は、いつもどおり', async () => {
+    const ctx = makeTestCtx('2026-10-14T12:00:00'); // 水曜
+    const v = await getSettingsView(ctx);
+    expect(v.tonight).toBe('2026-10-14');
+    await updateAppSettings(ctx, { guard: { relaxOnce: { night: v.tonight, until: '01:00' } } });
+    expect(await getSettingsView(at(ctx, '2026-10-14T23:45:00'))).toMatchObject({ relaxed: true, locked: true });
+    expect(await getSettingsView(at(ctx, '2026-10-15T01:30:00'))).toMatchObject({ relaxed: false, locked: true });
+    expect(await getSettingsView(at(ctx, '2026-10-15T23:45:00'))).toMatchObject({ relaxed: false, locked: true });
+  });
+  it('制限中は、決めることも取り消すこともできない（403）。Digital の保存は止めない', async () => {
+    const ctx = makeTestCtx('2026-10-14T12:00:00');
+    await updateAppSettings(ctx, { guard: { relaxOnce: { night: '2026-10-14', until: '01:00' } } });
+    const night = at(ctx, '2026-10-14T23:45:00');
+    expect(await status(updateAppSettings(night, { guard: { relaxOnce: { night: '2026-10-14', until: '04:00' } } }))).toBe(403);
+    expect(await status(updateAppSettings(night, { guard: { relaxOnce: null } }))).toBe(403);
+    await updateAppSettings(night, { digital: { reduce: ['x'] } });
+    // 翌晩の制限中でも、過ぎた夜の指定が残っているせいで Digital の保存が止まらない
+    await updateAppSettings(at(ctx, '2026-10-15T23:45:00'), { digital: { reduce: ['youtube'] } });
+  });
+  it('過ぎた夜の指定は、次に保存したときに消える。形式が違うと 400', async () => {
+    const ctx = makeTestCtx('2026-10-14T12:00:00');
+    await updateAppSettings(ctx, { guard: { relaxOnce: { night: '2026-10-14', until: '01:00' } } });
+    const next = at(ctx, '2026-10-15T12:00:00');
+    expect((await updateAppSettings(next, { sleep: { wakeTime: '06:30' } })).settings.guard.relaxOnce).toBeNull();
+    expect(await status(updateAppSettings(next, { guard: { relaxOnce: { night: '2026-10-15', until: '23:00' } } }))).toBe(400);
+    expect(await status(updateAppSettings(next, { guard: { relaxOnce: { night: 'x', until: '01:00' } } }))).toBe(400);
+  });
+});
