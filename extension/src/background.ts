@@ -11,8 +11,8 @@ import { IDLE_SECONDS, syncTracking } from './tracker';
 import { loadSettings } from './storage/settings';
 import { syncSettings } from './storage/syncSettings';
 import { getUnlocks } from './storage/unlock';
-import { getFocusEnd } from './storage/focus';
-import { isFocusing } from './core/focus';
+import { getFocusPlan } from './storage/focus';
+import { isFocusing, nextChange, phaseAt } from './core/focus';
 
 // 制限するかどうかは常に「現在時刻」から判定する。
 // アラームは「判定し直すきっかけ」にすぎず、遅れても発火しなくても結果は壊れない。
@@ -39,7 +39,7 @@ async function evaluateTab(tabId: number, url: string): Promise<void> {
   const settings = await loadSettings();
   const now = await getNow();
   // 集中中は、許可リストも一時解除も効かせず、対象サイトをすべて止める
-  const focusing = isFocusing(await getFocusEnd(), now.getTime());
+  const focusing = isFocusing(await getFocusPlan(), now.getTime());
   const target = classify(url, focusing ? [] : settings.allowedPlaylists);
   if (!target) return;
   if (!focusing && !shouldBlock(getStage(settings, now), target, await getUnlocks(), now.getTime())) return;
@@ -100,27 +100,33 @@ async function scheduleAlarms(): Promise<void> {
     await chrome.alarms.clear(EXPIRE_ALARM);
   }
 
-  const focusEnd = await getFocusEnd();
-  if (isFocusing(focusEnd, now.getTime())) {
-    await chrome.alarms.create(FOCUS_ALARM, { when: (focusEnd as number) - offset + slack });
+  const change = nextChange(await getFocusPlan(), now.getTime());
+  if (change !== undefined) {
+    await chrome.alarms.create(FOCUS_ALARM, { when: change - offset + slack });
   } else {
     await chrome.alarms.clear(FOCUS_ALARM);
   }
 }
 
-/** 集中が終わった通知。終了時刻ごとに1回だけ */
-async function maybeNotifyFocusEnd(): Promise<void> {
-  const end = await getFocusEnd();
-  if (end === undefined || isFocusing(end, (await getNow()).getTime())) return;
+/** 集中・休憩の切り替わりの通知。段階ごとに1回だけ */
+async function maybeNotifyFocus(): Promise<void> {
+  const plan = await getFocusPlan();
+  if (!plan) return;
+  const nowMs = (await getNow()).getTime();
+  const ph = phaseAt(plan, nowMs);
+  // 通知する段階の識別子：どの計画の、どの段階か
+  const key = ph.kind === 'done' ? `${plan.startMs}:done` : `${plan.startMs}:${ph.kind}:${ph.set}`;
+  if (ph.kind === 'focus' && ph.set === 1) return; // 開始時は自分で押したので通知しない
   const r = await chrome.storage.local.get('notifiedFocus');
-  if (r.notifiedFocus === end) return;
-  await chrome.storage.local.set({ notifiedFocus: end });
-  await chrome.notifications.create({
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-    title: '50分、おつかれさまでした',
-    message: '集中タイマーが終わりました。少し休みましょう。',
-  });
+  if (r.notifiedFocus === key) return;
+  await chrome.storage.local.set({ notifiedFocus: key });
+  const msg =
+    ph.kind === 'rest'
+      ? { title: `休憩（${ph.set}/${ph.sets}セット終了）`, message: '少し休みましょう。時間になったら自動で再開します。' }
+      : ph.kind === 'focus'
+        ? { title: `集中（${ph.set}/${ph.sets}セット目）`, message: '休憩が終わりました。もう一息がんばりましょう。' }
+        : { title: 'おつかれさまでした', message: `${plan.sets}セット、完走です。` };
+  await chrome.notifications.create({ type: 'basic', iconUrl: chrome.runtime.getURL('icons/icon128.png'), ...msg });
 }
 
 /** アラーム・起動・設定変更のどれから呼ばれても同じ結果になる */
@@ -129,7 +135,7 @@ async function sweep(): Promise<void> {
   await syncTracking().catch(() => undefined);
   await flushOutbox().catch(() => undefined);
   await maybeNotify();
-  await maybeNotifyFocusEnd();
+  await maybeNotifyFocus();
   await evaluateOpenTabs();
   await scheduleAlarms();
 }
@@ -169,9 +175,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   // 解除などの記録が積まれたら、ページが閉じる前に切り離してすぐ送る（利用時間は1分ごとの同期でまとめて送る）
   const queued = changes.outbox?.newValue as Array<{ payload: { type?: string } }> | undefined;
   if (area === 'local' && queued?.some((i) => i.payload.type !== 'usage')) void flushOutbox().catch(() => undefined);
-  if (area === 'local' && changes.focusEndAt) void evaluateOpenTabs(); // 開始した瞬間に、開いているタブも止める
+  if (area === 'local' && changes.focusPlan) void evaluateOpenTabs(); // 開始した瞬間に、開いているタブも止める
   if (area === 'local' && changes.remote) void syncSettings(true).catch(() => undefined); // 接続を保存したら、すぐ取り込む
-  if (area === 'local' && (changes.settings || changes.unlocks || changes.focusEndAt || isClockChange(changes))) {
+  if (area === 'local' && (changes.settings || changes.unlocks || changes.focusPlan || isClockChange(changes))) {
     void scheduleAlarms();
   }
 });

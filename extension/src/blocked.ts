@@ -3,8 +3,8 @@ import { classify, shouldBlock } from './core/match';
 import { formatSleep, remainingSleepMs, splitDuration } from './core/sleep';
 import { isAttending, stepWait } from './core/wait';
 import { getStage } from './core/stage';
-import { focusRemainingMs, isFocusing } from './core/focus';
-import { getFocusEnd } from './storage/focus';
+import { phaseAt } from './core/focus';
+import { getFocusPlan } from './storage/focus';
 import { formatHms } from './core/time';
 import type { Site } from './core/types';
 import { recordUnlocked } from './storage/eventLog';
@@ -53,11 +53,11 @@ async function init(): Promise<void> {
 
     // 朝になった・別タブで解除した、などで制限が外れていたら元のページへ戻す
     const current = await loadSettings();
-    const focusEnd = await getFocusEnd();
-    const focusing = isFocusing(focusEnd, now.getTime());
-    if (focusing) {
+    const ph = phaseAt(await getFocusPlan(), now.getTime());
+    if (ph.kind === 'focus') {
       document.body.classList.add('focus');
-      $('focusLeft').textContent = formatHms(focusRemainingMs(focusEnd, now.getTime()));
+      $('focusLeft').textContent = formatHms(ph.endMs - now.getTime());
+      $('focusSet').textContent = `${ph.set} / ${ph.sets} セット目`;
       return; // 集中中は、元のページへ戻さない
     }
     document.body.classList.remove('focus');

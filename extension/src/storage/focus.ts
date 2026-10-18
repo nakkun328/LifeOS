@@ -1,15 +1,15 @@
-import { nextFocusEnd } from '../core/focus';
+import { nextPlan, type FocusMode, type FocusPlan } from '../core/focus';
 
-const KEY = 'focusEndAt';
+const KEY = 'focusPlan';
 
-export async function getFocusEnd(): Promise<number | undefined> {
+export async function getFocusPlan(): Promise<FocusPlan | undefined> {
   const r = await chrome.storage.local.get(KEY);
-  return typeof r[KEY] === 'number' ? (r[KEY] as number) : undefined;
+  return r[KEY] as FocusPlan | undefined;
 }
 
-/** 50分の集中を始める。すでに集中中なら、今の終了時刻のまま。取り消す関数は作らない */
-export async function startFocus(nowMs: number): Promise<number> {
-  const end = nextFocusEnd(await getFocusEnd(), nowMs);
-  await chrome.storage.local.set({ [KEY]: end });
-  return end;
+/** 集中を始める。進行中なら、今の計画のまま。取り消す関数は作らない */
+export async function startFocus(mode: FocusMode, sets: number, nowMs: number): Promise<FocusPlan> {
+  const plan = nextPlan(await getFocusPlan(), mode, sets, nowMs);
+  await chrome.storage.local.set({ [KEY]: plan });
+  return plan;
 }

@@ -1,6 +1,6 @@
 import { getNow } from './clock';
-import { FOCUS_MINUTES, focusRemainingMs, isFocusing } from './core/focus';
-import { getFocusEnd, startFocus } from './storage/focus';
+import { clampSets, makePlan, phaseAt, planEnd, type FocusMode } from './core/focus';
+import { getFocusPlan, startFocus } from './storage/focus';
 import { countUnlocksTonight } from './core/night';
 import { getNextTransition, getStage } from './core/stage';
 import { formatHms } from './core/time';
@@ -22,6 +22,10 @@ const NEXT_LABEL: Record<Stage, string> = {
   hard: 'YouTube 全体の制限まで',
 };
 const $ = (id: string) => document.getElementById(id)!;
+const readSetup = (): { mode: FocusMode; sets: number } => ({
+  mode: ($('mode') as HTMLSelectElement).value as FocusMode,
+  sets: clampSets(Number(($('sets') as HTMLInputElement).value)),
+});
 let armed = false; // 開始ボタンを1回押して、確認待ちの状態
 
 async function render(): Promise<void> {
@@ -34,17 +38,21 @@ async function render(): Promise<void> {
   $('unlocks').textContent = `${countUnlocksTonight(events, now, settings.releaseTime)} 回`;
   const [size, status] = await Promise.all([outboxSize(), getRemoteStatus()]);
   $('sync').textContent = status.lastError ? `送信エラー：${status.lastError}（未送信 ${size} 件）` : size > 0 ? `未送信 ${size} 件` : '';
-  const focusEnd = await getFocusEnd();
-  const focusing = isFocusing(focusEnd, now.getTime());
+  const ph = phaseAt(await getFocusPlan(), now.getTime());
   const btn = $('focus') as HTMLButtonElement;
-  btn.disabled = focusing;
-  if (focusing) {
-    btn.textContent = '集中中';
-    $('focusMsg').textContent = `あと ${formatHms(focusRemainingMs(focusEnd, now.getTime()))}（取り消せません）`;
+  const active = ph.kind !== 'done';
+  btn.disabled = active;
+  $('focusSetup').style.display = active ? 'none' : 'grid';
+  if (ph.kind !== 'done') {
+    btn.textContent = ph.kind === 'focus' ? `集中中（${ph.set}/${ph.sets}）` : `休憩中（${ph.set}/${ph.sets}）`;
+    $('focusMsg').textContent = `${ph.kind === 'focus' ? '集中' : '休憩'}があと ${formatHms(ph.endMs - now.getTime())}（取り消せません）`;
   } else if (!armed) {
-    btn.textContent = `${FOCUS_MINUTES}分 集中する`;
+    btn.textContent = '集中を始める';
     $('focusMsg').textContent = '';
   }
+  const sel = readSetup();
+  const total = Math.round((planEnd(makePlan(sel.mode, sel.sets, 0)) - 0) / 60_000);
+  $('planInfo').textContent = active ? '' : `合計 ${Math.floor(total / 60)}時間${total % 60}分（${sel.sets}セット）`;
   if (__DEV__) $('devTime').textContent = `[DEV] 現在 ${now.toLocaleTimeString('ja-JP')}`;
 }
 
@@ -60,11 +68,12 @@ $('bed').addEventListener('click', async () => {
 $('focus').addEventListener('click', async () => {
   if (!armed) {
     armed = true;
-    $('focus').textContent = '本当に始める（50分は取り消せません）';
+    $('focus').textContent = '本当に始める（取り消せません）';
     return;
   }
   armed = false;
-  await startFocus((await getNow()).getTime());
+  const { mode, sets } = readSetup();
+  await startFocus(mode, sets, (await getNow()).getTime());
   void render();
 });
 $('options').addEventListener('click', () => void chrome.runtime.openOptionsPage());
