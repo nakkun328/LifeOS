@@ -11,6 +11,7 @@ import { IDLE_SECONDS, syncTracking } from './tracker';
 import { loadSettings } from './storage/settings';
 import { syncSettings } from './storage/syncSettings';
 import { getUnlocks } from './storage/unlock';
+import { loadRemote } from './storage/remote';
 import { getFocusPlan } from './storage/focus';
 import { isFocusing, nextChange, phaseAt } from './core/focus';
 
@@ -47,9 +48,23 @@ async function evaluateTab(tabId: number, url: string): Promise<void> {
   const blocked = new URL(chrome.runtime.getURL('blocked.html'));
   blocked.searchParams.set('site', target.site);
   blocked.searchParams.set('url', url);
-  if (focusing) blocked.searchParams.set('focus', '1');
+  let dest = blocked.toString();
+  if (focusing) {
+    blocked.searchParams.set('focus', '1');
+    dest = blocked.toString();
+    // Life OS が設定されていれば、Web 側のブロック画面を使う（拡張をオフにしてもタブが消えない）
+    const apiUrl = (await loadRemote()).apiUrl;
+    const ph = phaseAt(await getFocusPlan(), now.getTime());
+    if (apiUrl && ph.kind === 'focus') {
+      const web = new URL('/focus-blocked', new URL(apiUrl).origin);
+      web.searchParams.set('until', String(ph.endMs));
+      web.searchParams.set('set', `${ph.set}/${ph.sets}セット目`);
+      web.searchParams.set('url', url);
+      dest = web.toString();
+    }
+  }
   try {
-    await chrome.tabs.update(tabId, { url: blocked.toString() });
+    await chrome.tabs.update(tabId, { url: dest });
   } catch {
     return; // タブが閉じられた等
   }
