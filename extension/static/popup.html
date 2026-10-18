@@ -23,6 +23,16 @@
     <dt>今夜の解除回数</dt><dd id="unlocks">--</dd>
   </dl>
   <div id="devTime"></div>
+  <div id="focusSetup" style="display:grid;grid-template-columns:1fr 70px;gap:6px;margin-bottom:6px">
+    <select id="mode" style="font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px">
+      <option value="50-10">50分集中 / 10分休憩</option>
+      <option value="25-5">25分集中 / 5分休憩</option>
+    </select>
+    <input id="sets" type="number" min="1" max="8" value="3" title="セット数" style="font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px" />
+  </div>
+  <div id="planInfo" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div>
+  <button id="focus" class="primary" style="margin-bottom:6px">集中を始める</button>
+  <div id="focusMsg" style="font-size:12px;color:var(--muted);min-height:1.4em;margin-bottom:10px"></div>
   <button id="bed" style="margin-bottom:8px">寝る（記録する）</button>
   <div id="bedMsg" style="font-size:12px;color:var(--muted);min-height:1.4em;margin-bottom:6px"></div>
   <button id="options">設定を開く</button>

@@ -3,6 +3,9 @@ import { classify, shouldBlock } from './core/match';
 import { formatSleep, remainingSleepMs, splitDuration } from './core/sleep';
 import { isAttending, stepWait } from './core/wait';
 import { getStage } from './core/stage';
+import { phaseAt } from './core/focus';
+import { getFocusPlan } from './storage/focus';
+import { formatHms } from './core/time';
 import type { Site } from './core/types';
 import { recordUnlocked } from './storage/eventLog';
 import { enqueueBed, isConfigured, loadRemote } from './storage/remote';
@@ -50,6 +53,14 @@ async function init(): Promise<void> {
 
     // 朝になった・別タブで解除した、などで制限が外れていたら元のページへ戻す
     const current = await loadSettings();
+    const ph = phaseAt(await getFocusPlan(), now.getTime());
+    if (ph.kind === 'focus') {
+      document.body.classList.add('focus');
+      $('focusLeft').textContent = formatHms(ph.endMs - now.getTime());
+      $('focusSet').textContent = `${ph.set} / ${ph.sets} セット目`;
+      return; // 集中中は、元のページへ戻さない
+    }
+    document.body.classList.remove('focus');
     const target = classify(originalUrl, current.allowedPlaylists);
     if (!target || !shouldBlock(getStage(current, now), target, await getUnlocks(), now.getTime())) {
       goBack();
@@ -111,11 +122,13 @@ async function init(): Promise<void> {
     ($('bed') as HTMLButtonElement).disabled = true;
   });
 
-  $('close').addEventListener('click', async () => {
+  const closeTab = async (): Promise<void> => {
     const tab = await chrome.tabs.getCurrent();
     if (tab?.id !== undefined) await chrome.tabs.remove(tab.id);
     else window.close();
-  });
+  };
+  $('close').addEventListener('click', () => void closeTab());
+  $('closeFocus').addEventListener('click', () => void closeTab());
 }
 
 void init();

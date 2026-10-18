@@ -19,11 +19,24 @@
     summary { cursor: pointer; color: var(--muted); font-size: 14px; }
     .unlock { margin-top: 14px; display: grid; gap: 10px; }
     .unlock label { font-size: 13px; color: var(--muted); }
+    .focusBox { display: none; }
+    body.focus .focusBox { display: block; }
+    body.focus .nightBox { display: none; }
+    .focusLeft { font-size: 56px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; margin: 4px 0 8px; }
     .wait { font-size: 14px; color: var(--accent); min-height: 1.6em; }
   </style>
 </head>
 <body>
   <main>
+    <div class="focusBox">
+      <div class="moon">🎯</div>
+      <h1>集中タイマー中です（<span id="focusSet"></span>）</h1>
+      <p class="lead">この集中が終わるまで、あと</p>
+      <p class="focusLeft" id="focusLeft">--</p>
+      <p class="note">この画面からは解除できません。休憩になると、自動で元のページに戻ります。</p>
+      <div class="actions"><button class="primary" id="closeFocus">このタブを閉じる</button></div>
+    </div>
+    <div class="nightBox">
     <div class="moon">🌙</div>
     <h1 id="siteLabel">今夜はここまでにしませんか</h1>
     <p class="lead">いま眠れば</p>
@@ -46,6 +59,7 @@
         </div>
       </div>
     </details>
+    </div>
   </main>
   <script src="blocked.js"></script>
 </body>
